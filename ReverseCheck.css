@@ -1,0 +1,7 @@
+body { font-family: sans-serif; margin: 2em; background: #f9f9f9; }
+h1 { color: #333; }
+textarea { width: 100%; font-size: 1em; }
+button { margin-top: 1em; padding: 0.5em 2em; font-size: 1em; }
+#result-area { margin-top: 2em; background: #fff; padding: 1em; border-radius: 8px; box-shadow: 0 2px 8px #0001; }
+.true { color: green; font-weight: bold; }
+.false { color: red; font-weight: bold; } 

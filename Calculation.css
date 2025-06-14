@@ -1,0 +1,367 @@
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #0056b3;
+  --background-color: #f4f4f4;
+  --text-color: #333;
+  --white-color: #fff;
+  --border-color: #ddd;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --reset-button-color: #dc3545;
+  --reset-button-hover-color: #c82333;
+}
+
+/* 全体的なスタイル */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0px;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-size: 14px;
+  min-width: 1200px; /* 最小幅を設定 */
+}
+
+h1 {
+  text-align: center;
+  color: var(--primary-color);
+}
+
+/* フォーム要素のスタイル */
+.product {
+  margin-bottom: 20px;
+  background-color: var(--white-color);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px var(--shadow-color);
+  box-sizing: border-box;
+  overflow-x: auto; /* 横スクロールを有効化 */
+}
+
+.products-container .product {
+  width: 100%;
+  min-width: 1200px; /* 最小幅を設定 */
+}
+
+.summary__management-fee {
+  display: flex;
+  align-items: baseline;
+}
+
+.summary__total-fee {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary__total-and-buttons {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.summary__total {
+  margin: 0;
+}
+
+.summary__reset-button,
+.summary__calculate-button {
+  padding: 10px 30px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+  color: var(--white-color);
+  transition: 0.3s ease;
+}
+
+.summary__reset-button {
+  background-color: var(--reset-button-color);
+  margin-right: 10px;
+}
+
+.summary__reset-button:hover {
+  background-color: var(--reset-button-hover-color);
+}
+
+.summary__calculate-button {
+  background-color: var(--primary-color);
+}
+
+.summary__calculate-button:hover {
+  background-color: var(--secondary-color);
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+select,
+input[type="number"] {
+  width: 100%;
+  min-width: 120px;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: var(--primary-color);
+  color: var(--white-color);
+  padding: 15px 40px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease;
+  margin-right: 0px;
+}
+
+button:hover {
+  background-color: var(--secondary-color);
+}
+
+/* 結果表示のスタイル */
+#result {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #e9ecef;
+  border-radius: 5px;
+  font-size: 16px;
+  color: #495057;
+}
+
+/* 一覧表示のスタイル */
+#summary {
+  width: 100%;
+  min-width: 1200px;
+  z-index: 1000;
+  margin-bottom: 0;
+  background-color: var(--white-color);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+#summary h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: var(--primary-color);
+}
+
+#summary-list {
+  list-style: none;
+  padding: 0;
+}
+
+#summary-list li {
+  margin-bottom: 5px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+#summary p {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.summary__total {
+  font-size: 20px;
+}
+
+/* 商品コンテナのスタイル */
+.products-container,
+.kiso-products-container {
+  display: flex;
+  flex-direction: column;
+  min-width: 1200px;
+}
+
+/* 商品グリッドのスタイル */
+.product-grid {
+  display: grid;
+  grid-template-columns: 
+    minmax(150px, 1fr)  /* 大項目選択 */
+    minmax(150px, 1fr)  /* 小項目選択 */
+    minmax(120px, 1fr)  /* 高さ/数量 */
+    minmax(120px, 1fr)  /* 長さ/値引 */
+    minmax(120px, 1fr)  /* 値引 */
+    minmax(150px, 1fr)  /* 金額(税抜) */
+    minmax(150px, 1fr); /* 金額(税込) */
+  gap: 10px;
+  width: 100%;
+}
+
+.quantity-discount {
+  width: 100%;
+  min-width: 120px;
+}
+
+.item {
+  margin-bottom: 5px;
+  padding: 5px;
+  min-width: 120px;
+}
+
+/* タブメニューのスタイル */
+.tab-menu {
+  display: flex;
+  margin: 30px 0 0px;  /* 上部のマージンを30pxに設定 */
+}
+
+
+.tab-button {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  transition: 0.3s ease;
+  margin-right: 5px;
+}
+
+.tab-button:hover {
+  background-color: var(--border-color);
+}
+
+.tab-button.active {
+  background-color: var(--white-color);
+  color: var(--primary-color);
+  box-shadow: 0 2px 4px var(--shadow-color);
+  transform: translateY(-2px);
+}
+
+/* タブコンテンツのスタイル */
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+main {
+  padding-top: 20px;
+  overflow-x: auto;
+  min-width: 1200px;
+}
+
+/* 値引き入力欄のスタイル */
+.discount-input {
+  width: 80px !important;
+  margin-right: 10px;
+  min-width: 80px;
+}
+
+/* 金額表示のスタイル */
+.price-display {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+/* レスポンシブ設定を削除し、固定レイアウトに */
+.container {
+  min-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.summary__buttons {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.summary__add-button {
+  background-color: #28a745;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.summary__add-button:hover {
+  background-color: #218838;
+}
+.summary__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.summary-notice {
+    background-color: #e6ffe6;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-left: 5px solid #4CAF50;
+}
+
+.summary-group {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 5px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.summary-label {
+    min-width: 120px;
+    font-weight: bold;
+}
+
+.summary-content {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.copy-button {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.copy-button:hover {
+    background-color: #45a049;
+}
+
+.copy-button:active {
+    background-color: #3d8b40;
+}
+/* 既存のCSSに追加または修正 */
+.summary-group {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 5px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.copy-button {
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    margin-right: 10px; /* ボタンと内容の間隔 */
+}
+
+.summary-label {
+    min-width: 120px;
+    font-weight: bold;
+}
+
+.summary-content {
+    flex-grow: 1;
+}

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>逆計算チェック</title>
+    <link rel="stylesheet" href="./ReverseCheck.css">
+</head>
+<body>
+    <h1>逆計算チェックツール</h1>
+    <p>Excelから「商品名・数量・金額」の3列をコピーして下のテキストエリアに貼り付けてください。</p>
+    <textarea id="input-area" rows="10" cols="60" placeholder="商品名\t数量\t金額\n..."></textarea>
+    <br>
+    <button id="check-button">チェック</button>
+    <button id="clear-button">クリア</button>
+    <div id="result-area"></div>
+    <script src="./data.js"></script>
+    <script src="./reverse_check.js"></script>
+</body>
+</html> 
