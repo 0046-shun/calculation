@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スクリーンショット撮影ガイド</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2980b9;
+            margin-top: 25px;
+        }
+        .screenshot-item {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .screenshot-item h4 {
+            color: #2c3e50;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        .screenshot-item p {
+            margin: 10px 0;
+            color: #555;
+        }
+        .url-box {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .settings-table th,
+        .settings-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .settings-table th {
+            background: #3498db;
+            color: white;
+        }
+        .settings-table tr:nth-child(even) {
+            background: #f2f2f2;
+        }
+        .checklist {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .checklist h4 {
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        .checklist ul {
+            margin: 10px 0;
+        }
+        .checklist li {
+            margin: 5px 0;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .warning h4 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .button-demo {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .mockup-box {
+            border: 2px dashed #bdc3c7;
+            padding: 20px;
+            margin: 15px 0;
+            background: #fafafa;
+            text-align: center;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 スクリーンショット撮影ガイド</h1>
+        
+        <div class="warning">
+            <h4>⚠️ 重要な注意事項</h4>
+            <ul>
+                <li>すべてのスクリーンショットは <strong>1920x1080</strong> 以上の解像度で撮影してください</li>
+                <li>ブラウザのズームは <strong>100%</strong> に設定してください</li>
+                <li>撮影前にキャッシュをクリアして最新版を確認してください</li>
+                <li><strong>個人情報や実際の価格情報</strong> が写らないよう注意してください</li>
+            </ul>
+        </div>
+
+        <h2>🛠️ 撮影環境設定</h2>
+        <table class="settings-table">
+            <tr>
+                <th>項目</th>
+                <th>推奨設定</th>
+                <th>理由</th>
+            </tr>
+            <tr>
+                <td>ブラウザ</td>
+                <td>Chrome または Edge</td>
+                <td>レンダリングの一貫性</td>
+            </tr>
+            <tr>
+                <td>ウィンドウサイズ</td>
+                <td>1400px × 900px 以上</td>
+                <td>コンテンツの可視性</td>
+            </tr>
+            <tr>
+                <td>ズーム</td>
+                <td>100%</td>
+                <td>標准サイズでの表示</td>
+            </tr>
+            <tr>
+                <td>DevToolsのモード</td>
+                <td>非表示</td>
+                <td>画面の邪魔にならない</td>
+            </tr>
+            <tr>
+                <td>フォントサイズ</td>
+                <td>システム標準</td>
+                <td>一般ユーザーの環境</td>
+            </tr>
+        </table>
+
+        <h2>📱 撮影対象別ガイド</h2>
+
+        <h3>1. メインページ (index.html)</h3>
+        <div class="screenshot-item">
+            <h4>📋 ランディングページ全体</h4>
+            <div class="url-box">
+                URL: https://0046-shun.github.io/calculation/
+            </div>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>ページタイトル「計算アプリ Collection」</li>
+                <li>説明文</li>
+                <li>2つのアプリカード（計算アプリ、リバースチェック）</li>
+                <li>各カードのボタン</li>
+            </ul>
+            <div class="mockup-box">
+                【ここに index.html のスクリーンショット】<br>
+                メインタイトル + 2つのアプリカード
+            </div>
+        </div>
+
+        <h3>2. 価格計算表 (Calculation.html)</h3>
+        
+        <div class="screenshot-item">
+            <h4>📋 初期画面</h4>
+            <div class="url-box">
+                URL: https://0046-shun.github.io/calculation/Calculation.html
+            </div>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>上部の「選択された商品」エリア（空の状態）</li>
+                <li>管理費チェックボックス</li>
+                <li>合計金額表示（0円の状態）</li>
+                <li>タブメニュー（通常商品/基礎商品）</li>
+                <li>商品1のフォーム（未選択状態）</li>
+            </ul>
+            <div class="mockup-box">
+                【ここに初期画面のスクリーンショット】<br>
+                全フォーム + 空の結果エリア
+            </div>
+        </div>
+
+        <div class="screenshot-item">
+            <h4>📋 商品選択後の状態</h4>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>大項目で何かを選択した状態</li>
+                <li>小項目で商品を選択した状態</li>
+                <li>数量を入力した状態（例：2）</li>
+                <li>値引きを入力した状態（例：1000）</li>
+                <li>まだ計算ボタンを押していない状態</li>
+            </ul>
+            <div class="mockup-box">
+                【ここに商品選択後のスクリーンショット】<br>
+                フォーム入力済み + 計算前の状態
+            </div>
+        </div>
+
+        <div class="screenshot-item">
+            <h4>📋 計算結果表示画面</h4>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>上部の「選択された商品」に商品が表示</li>
+                <li>管理費がONの状態</li>
+                <li>合計金額（税抜・税込）が表示</li>
+                <li>下部のフォームも見える範囲で</li>
+            </ul>
+            <div class="mockup-box">
+                【ここに計算結果のスクリーンショット】<br>
+                結果表示 + 詳細データ
+            </div>
+        </div>
+
+        <div class="screenshot-item">
+            <h4>📋 複数商品追加時の画面</h4>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>「商品フォーム追加」ボタンを押した後</li>
+                <li>商品2のフォームが表示された状態</li>
+                <li>商品1と商品2の両方が見える範囲で撮影</li>
+            </ul>
+            <div class="mockup-box">
+                【ここに複数商品のスクリーンショット】<br>
+                商品1 + 商品2 フォーム
+            </div>
+        </div>
+
+        <h3>3. 逆計算チェックツール (ReverseCheck.html)</h3>
+        
+        <div class="screenshot-item">
+            <h4>📋 初期画面</h4>
+            <div class="url-box">
+                URL: https://0046-shun.github.io/calculation/ReverseCheck.html
+            </div>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>ページタイトル「逆計算チェックツール」</li>
+                <li>説明文</li>
+                <li>空のテキストエリア</li>
+                <li>「チェック」「クリア」ボタン</li>
+                <li>結果表示エリア（空の状態）</li>
+            </ul>
+            <div class="mockup-box">
+                【ここに初期画面のスクリーンショット】<br>
+                フォーム全体 + 空の結果エリア
+            </div>
+        </div>
+
+        <div class="screenshot-item">
+            <h4>📋 データ入力後の画面</h4>
+            <p><strong>撮影のための準備データ:</strong></p>
+            <div class="url-box">
+商品A	2	10000
+商品B	3	15000
+商品C	1	5000
+            </div>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>テキストエリアにサンプルデータが入力された状態</li>
+                <li>まだチェックボタンを押していない状態</li>
+            </ul>
+            <div class="mockup-box">
+                【ここにデータ入力後のスクリーンショット】<br>
+                テキストエリア + サンプルデータ
+            </div>
+        </div>
+
+        <div class="screenshot-item">
+            <h4>📋 チェック結果表示画面</h4>
+            <p><strong>撮影ポイント:</strong></p>
+            <ul>
+                <li>チェックボタンを押した後の結果</li>
+                <li>成功・エラーのメッセージ</li>
+                <li>詳細な検証結果</li>
+            </ul>
+            <div class="mockup-box">
+                【ここにチェック結果のスクリーンショット】<br>
+                結果表示 + 詳細メッセージ
+            </div>
+        </div>
+
+        <h2>📝 撮影チェックリスト</h2>
+        <div class="checklist">
+            <h4>✅撮影前の確認事項</h4>
+            <ul>
+                <li>□ ブラウザのキャッシュをクリア</li>
+                <li>□ ウィンドウサイズを適切に調整</li>
+                <li>□ ズームを100%に設定</li>
+                <li>□ 不要なブラウザ拡張機能を無効化</li>
+                <li>□ フルスクリーンまたは適切なサイズに調整</li>
+            </ul>
+        </div>
+
+        <div class="checklist">
+            <h4>✅撮影後の確認事項</h4>
+            <ul>
+                <li>□ 画像の解像度が十分か</li>
+                <li>□ 文字がクリアに読めるか</li>
+                <li>□ UI要素が切れていないか</li>
+                <li>□ 個人情報が映り込んでいないか</li>
+                <li>□ ファイル名を適切に命名</li>
+            </ul>
+        </div>
+
+        <h2>📁 推奨ファイル命名規則</h2>
+        <div class="screenshot-item">
+            <h4>命名例</h4>
+            <ul>
+                <li><code>01_index_landing_page.png</code> - メインページ</li>
+                <li><code>02_calculation_initial.png</code> - 価格計算表初期画面</li>
+                <li><code>03_calculation_selected.png</code> - 商品選択後</li>
+                <li><code>04_calculation_result.png</code> - 計算結果</li>
+                <li><code>05_calculation_multiple.png</code> - 複数商品</li>
+                <li><code>06_reverse_initial.png</code> - 逆計算初期画面</li>
+                <li><code>07_reverse_input.png</code> - データ入力後</li>
+                <li><code>08_reverse_result.png</code> - チェック結果</li>
+            </ul>
+        </div>
+
+        <h2>🎯 画像の活用方法</h2>
+        <p>撮影した画像は以下の用途で使用できます：</p>
+        <ul>
+            <li><strong>README.md</strong> - GitHubリポジトリのドキュメント強化</li>
+            <li><strong>ユーザーマニュアル</strong> - 操作手順の視覚的説明</li>
+            <li><strong>プレゼンテーション</strong> - アプリケーションの紹介資料</li>
+            <li><strong>技術ブログ</strong> - 開発過程の記録</li>
+        </ul>
+
+        <div class="warning">
+            <h4>💡 追加のヒント</h4>
+            <ul>
+                <li>複数のブラウザで表示を確認して一貫性をチェック</li>
+                <li>モバイル表示のスクリーンショットも撮影を検討</li>
+                <li>アニメーション効果がある場合は、適切なタイミングで撮影</li>
+                <li>必要に応じて画像編集ソフトで注釈を追加</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 
