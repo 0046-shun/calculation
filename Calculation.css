@@ -1,173 +1,454 @@
 :root {
-  --primary-color: #007bff;
-  --secondary-color: #0056b3;
-  --background-color: #f4f4f4;
-  --text-color: #333;
-  --white-color: #fff;
-  --border-color: #ddd;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-  --reset-button-color: #dc3545;
-  --reset-button-hover-color: #c82333;
+  /* プライマリーカラー - 深いブルー系 */
+  --primary-color: #1976d2;
+  --primary-hover: #1565c0;
+  --primary-light: #42a5f5;
+  
+  /* セカンダリーカラー - アクセント用 */
+  --secondary-color: #26a69a;
+  --secondary-hover: #00695c;
+  
+  /* 成功・警告・エラーカラー */
+  --success-color: #2e7d32;
+  --success-light: #e8f5e9;
+  --warning-color: #f57c00;
+  --warning-light: #fff3e0;
+  --error-color: #d32f2f;
+  --error-light: #ffebee;
+  
+  /* ニュートラルカラー */
+  --background-primary: #f8fafc;
+  --background-secondary: #ffffff;
+  --background-tertiary: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  
+  /* ボーダー・シャドウ */
+  --border-color: #e2e8f0;
+  --border-dark: #cbd5e1;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* サイズ・スペーシング */
+  --border-radius: 8px;
+  --border-radius-lg: 12px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
 }
 
 /* 全体的なスタイル */
 body {
-  font-family: Arial, sans-serif;
-  margin: 0px;
-  background-color: var(--background-color);
-  color: var(--text-color);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  background: linear-gradient(135deg, var(--background-primary) 0%, #e2e8f0 100%);
+  color: var(--text-primary);
   font-size: 14px;
-  min-width: 1200px; /* 最小幅を設定 */
+  line-height: 1.6;
+  min-height: 100vh;
+  min-width: 1200px;
+}
+
+/* ページ移動ボタン */
+body > button:first-child {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  z-index: 1000;
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body > button:first-child:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  background: linear-gradient(135deg, var(--secondary-hover) 0%, #004d40 100%);
 }
 
 h1 {
   text-align: center;
   color: var(--primary-color);
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: var(--spacing-xl) 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* フォーム要素のスタイル */
+h2 {
+  color: var(--primary-color);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+}
+
+/* カード系コンポーネント */
 .product {
-  margin-bottom: 20px;
-  background-color: var(--white-color);
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px var(--shadow-color);
-  box-sizing: border-box;
-  overflow-x: auto; /* 横スクロールを有効化 */
+  margin-bottom: var(--spacing-lg);
+  background: var(--background-secondary);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.product::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-light) 100%);
+}
+
+.product:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .products-container .product {
   width: 100%;
-  min-width: 1200px; /* 最小幅を設定 */
+  min-width: 1200px;
 }
 
-.summary__management-fee {
-  display: flex;
-  align-items: baseline;
-}
-
-.summary__total-fee {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.summary__total-and-buttons {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.summary__total {
-  margin: 0;
-}
-
-.summary__reset-button,
-.summary__calculate-button {
-  padding: 10px 30px;
-  border-radius: 5px;
-  cursor: pointer;
-  border: none;
-  color: var(--white-color);
-  transition: 0.3s ease;
-}
-
-.summary__reset-button {
-  background-color: var(--reset-button-color);
-  margin-right: 10px;
-}
-
-.summary__reset-button:hover {
-  background-color: var(--reset-button-hover-color);
-}
-
-.summary__calculate-button {
-  background-color: var(--primary-color);
-}
-
-.summary__calculate-button:hover {
-  background-color: var(--secondary-color);
-}
-
+/* フォーム要素のスタイル */
 label {
   display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
+  margin-bottom: var(--spacing-xs);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 select,
 input[type="number"] {
   width: 100%;
   min-width: 120px;
-  padding: 8px;
-  margin-bottom: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: var(--spacing-md);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.3s ease;
   box-sizing: border-box;
 }
 
+select:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+  transform: translateY(-1px);
+}
+
+select:hover,
+input[type="number"]:hover {
+  border-color: var(--border-dark);
+}
+
+/* ボタンスタイル */
 button {
-  background-color: var(--primary-color);
-  color: var(--white-color);
-  padding: 15px 40px;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  color: white;
+  padding: 14px 28px;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--border-radius);
   cursor: pointer;
-  transition: 0.3s ease;
-  margin-right: 0px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+button:hover::before {
+  left: 100%;
 }
 
 button:hover {
-  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
-/* 結果表示のスタイル */
-#result {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #e9ecef;
-  border-radius: 5px;
-  font-size: 16px;
-  color: #495057;
+button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
-/* 一覧表示のスタイル */
+/* 特定ボタンのスタイル */
+.summary__reset-button {
+  background: linear-gradient(135deg, var(--error-color) 0%, #b71c1c 100%);
+  margin-right: var(--spacing-md);
+}
+
+.summary__reset-button:hover {
+  background: linear-gradient(135deg, #b71c1c 0%, #8e0000 100%);
+}
+
+.summary__add-button {
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-hover) 100%);
+}
+
+.summary__add-button:hover {
+  background: linear-gradient(135deg, var(--secondary-hover) 0%, #004d40 100%);
+}
+
+/* サマリーセクション */
 #summary {
   width: 100%;
   min-width: 1200px;
-  z-index: 1000;
-  margin-bottom: 0;
-  background-color: var(--white-color);
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px var(--shadow-color);
+  margin-bottom: var(--spacing-xl);
+  background: var(--background-secondary);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
+  position: relative;
+  min-height: 580px; /* サマリーエリア全体の最小高さを設定して商品フォームの位置を安定化 */
+}
+
+#summary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
 }
 
 #summary h2 {
-  font-size: 20px;
-  margin-bottom: 10px;
+  font-size: 1.75rem;
+  margin-bottom: var(--spacing-md);
   color: var(--primary-color);
 }
 
 #summary-list {
   list-style: none;
-  padding: 0;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  max-height: 400px; /* サマリーエリアの最大高さを制限 */
+  overflow-y: auto; /* 内容がオーバーフローした場合はスクロール可能にする */
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--background-secondary);
+  box-shadow: var(--shadow-sm);
 }
 
 #summary-list li {
-  margin-bottom: 5px;
-  padding: 10px;
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-md);
   border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: var(--border-radius);
+  background: var(--background-tertiary);
+  transition: all 0.2s ease;
 }
 
-#summary p {
-  margin-top: 10px;
-  font-weight: bold;
+#summary-list li:hover {
+  background: var(--background-secondary);
+  border-color: var(--primary-light);
+}
+
+/* サマリーエリアが空の時の表示 */
+#summary-list:empty {
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#summary-list:empty::before {
+  content: "商品を選択すると、ここに表示されます";
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* サマリーグループの横並び表示 */
+.summary-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: var(--background-tertiary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.summary-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.summary-content {
+  flex-grow: 1;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* コピーボタンを控えめに */
+.copy-button {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 10px 10px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: calc(var(--border-radius) / 2);
+  box-shadow: none;
+  transition: all 0.2s ease;
+  order: 2; /* ボタンを右側に配置 */
+  margin-left: 10px;
+  margin-right: 15px; /* スクロールバーから5px離す */
+  flex-shrink: 0;
+  position: relative; /* スクロールバーとの重なりを防ぐ */
+  z-index: 1; /* スクロールバーの上に表示 */
+}
+
+.copy-button:hover {
+  background: var(--background-secondary);
+  color: var(--text-secondary);
+  border-color: var(--border-dark);
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.copy-button:active {
+  transform: scale(0.95);
+  box-shadow: none;
+}
+
+.summary__management-fee {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--background-tertiary);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.summary__total-fee {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .summary__total {
-  font-size: 20px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 0;
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, var(--background-tertiary) 0%, rgba(25, 118, 210, 0.05) 100%);
+  border-radius: var(--border-radius);
+  border: 2px solid var(--primary-light);
+}
+
+.summary__buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+}
+
+/* 商品グリッドのスタイル */
+.product-grid {
+  display: grid;
+  grid-template-columns: 
+    minmax(150px, 1fr)
+    minmax(150px, 1fr)
+    minmax(120px, 1fr)
+    minmax(120px, 1fr)
+    minmax(120px, 1fr)
+    minmax(150px, 1fr)
+    minmax(150px, 1fr);
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+/* タブメニュー */
+.tab-menu {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  background: var(--background-tertiary);
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.tab-button {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--border-radius) - 4px);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-button:hover {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+  transform: none;
+  box-shadow: none;
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+main {
+  margin: 0 var(--spacing-lg);
+  padding-bottom: var(--spacing-xl);
 }
 
 /* 商品コンテナのスタイル */
@@ -178,190 +459,45 @@ button:hover {
   min-width: 1200px;
 }
 
-/* 商品グリッドのスタイル */
-.product-grid {
-  display: grid;
-  grid-template-columns: 
-    minmax(150px, 1fr)  /* 大項目選択 */
-    minmax(150px, 1fr)  /* 小項目選択 */
-    minmax(120px, 1fr)  /* 高さ/数量 */
-    minmax(120px, 1fr)  /* 長さ/値引 */
-    minmax(120px, 1fr)  /* 値引 */
-    minmax(150px, 1fr)  /* 金額(税抜) */
-    minmax(150px, 1fr); /* 金額(税込) */
-  gap: 10px;
-  width: 100%;
-}
-
-.quantity-discount {
-  width: 100%;
-  min-width: 120px;
-}
-
-.item {
-  margin-bottom: 5px;
-  padding: 5px;
-  min-width: 120px;
-}
-
-/* タブメニューのスタイル */
-.tab-menu {
-  display: flex;
-  margin: 30px 0 0px;  /* 上部のマージンを30pxに設定 */
-}
-
-
-.tab-button {
-  background-color: var(--background-color);
-  color: var(--text-color);
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px 5px 0 0;
-  cursor: pointer;
-  transition: 0.3s ease;
-  margin-right: 5px;
-}
-
-.tab-button:hover {
-  background-color: var(--border-color);
-}
-
-.tab-button.active {
-  background-color: var(--white-color);
-  color: var(--primary-color);
-  box-shadow: 0 2px 4px var(--shadow-color);
-  transform: translateY(-2px);
-}
-
-/* タブコンテンツのスタイル */
-.tab-content {
-  display: none;
-}
-
-.tab-content.active {
-  display: block;
-}
-
-main {
-  padding-top: 20px;
-  overflow-x: auto;
-  min-width: 1200px;
-}
-
-/* 値引き入力欄のスタイル */
-.discount-input {
-  width: 80px !important;
-  margin-right: 10px;
-  min-width: 80px;
-}
-
-/* 金額表示のスタイル */
+/* 価格表示 */
 .price-display {
-  font-weight: bold;
-  color: var(--primary-color);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--success-color);
+  background: var(--success-light);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--success-color);
 }
 
-/* レスポンシブ設定を削除し、固定レイアウトに */
-.container {
-  min-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
+/* 600px~700px画面幅に最適化 */
+body {
+  min-width: 600px;
 }
 
+.products-container .product,
+.products-container,
+.kiso-products-container,
+#summary {
+  min-width: auto;
+  max-width: 100%;
+}
+
+.product-grid {
+  grid-template-columns: 
+    minmax(100px, 1fr)
+    minmax(100px, 1fr)
+    minmax(80px, 1fr)
+    minmax(80px, 1fr)
+    minmax(80px, 1fr)
+    minmax(100px, 1fr)
+    minmax(100px, 1fr);
+  gap: var(--spacing-sm);
+}
+
+/* ボタンは常に横配置を維持 */
 .summary__buttons {
   display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.summary__add-button {
-  background-color: #28a745;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: 0.3s ease;
-}
-
-.summary__add-button:hover {
-  background-color: #218838;
-}
-.summary__list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.summary-notice {
-    background-color: #e6ffe6;
-    padding: 10px;
-    margin-bottom: 10px;
-    border-left: 5px solid #4CAF50;
-}
-
-.summary-group {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 5px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-}
-
-.summary-label {
-    min-width: 120px;
-    font-weight: bold;
-}
-
-.summary-content {
-    flex-grow: 1;
-    margin-right: 10px;
-}
-
-.copy-button {
-    padding: 5px 10px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.copy-button:hover {
-    background-color: #45a049;
-}
-
-.copy-button:active {
-    background-color: #3d8b40;
-}
-/* 既存のCSSに追加または修正 */
-.summary-group {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 5px;
-    background-color: #f5f5f5;
-    border-radius: 4px;
-}
-
-.copy-button {
-    padding: 5px 10px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    margin-right: 10px; /* ボタンと内容の間隔 */
-}
-
-.summary-label {
-    min-width: 120px;
-    font-weight: bold;
-}
-
-.summary-content {
-    flex-grow: 1;
+  gap: var(--spacing-md);
+  flex-wrap: nowrap;
 }

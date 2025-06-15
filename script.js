@@ -15,24 +15,60 @@ function formatNumber(num) {
 
 // カビの価格を計算する関数
 function calculateKabiPrice(quantity, selectedProducts) {
-    // カビまたはカビ消毒のデータを取得
-    const kabiData = productsData["そのほか"]["カビ"];  // データ構造は同じなので、どちらを参照しても良い
-    let appliedPrice = kabiData.price;
+    // 常に「そのほか」カテゴリのカビデータを使用（割引条件が設定されているため）
+    const kabiData = productsData["そのほか"]["カビ"];
+    let appliedPrice = kabiData.price; // 基本価格: 2500円
 
-    for (const product of selectedProducts) {
-        if (product.category === "消毒") {
-            appliedPrice = kabiData.discountPrice;
-            break;
-        }
+    console.log('=== カビ価格計算開始 ===');
+    console.log('選択商品一覧:', selectedProducts);
+    console.log('数量:', quantity);
+    console.log('カビデータ:', kabiData);
 
-        if (product.category === "床下機器" && 
-            (product.item.includes("DC2") || product.item.includes("60"))) {
-            appliedPrice = kabiData.discount2Price;
-            break;
-        }
+    // 第1条件: 消毒カテゴリがあれば1000円
+    const hasDisinfection = selectedProducts.some(product => 
+        product.category === "消毒"
+    );
+    
+    console.log('消毒カテゴリ判定:', hasDisinfection);
+    
+    if (hasDisinfection) {
+        appliedPrice = kabiData.discountPrice; // 1000円
+        console.log('消毒割引適用: 1000円');
+        return appliedPrice * quantity;
     }
 
-    return appliedPrice * quantity;
+    // 第2条件: 基礎カテゴリまたはDC2/60を含む商品があれば1700円
+    const hasDiscount2Condition = selectedProducts.some(product => {
+        // 基礎カテゴリをチェック（新規工事または追加工事で基礎商品）
+        if ((product.category === "新規工事" || product.category === "追加工事") && 
+            (product.item && (product.item.includes("基礎") || product.item.includes("クラック")))) {
+            console.log('基礎商品発見:', product);
+            return true;
+        }
+        
+        // DC2または60を含む商品をチェック
+        if (product.item && (product.item.includes("DC2") || product.item.includes("60"))) {
+            console.log('DC2/60商品発見:', product);
+            return true;
+        }
+        
+        return false;
+    });
+    
+    console.log('第2条件判定:', hasDiscount2Condition);
+    
+    if (hasDiscount2Condition) {
+        appliedPrice = kabiData.discount2Price; // 1700円
+        console.log('第2条件割引適用: 1700円');
+    } else {
+        console.log('基本価格適用: 2500円');
+    }
+
+    const finalPrice = appliedPrice * quantity;
+    console.log('最終価格:', finalPrice);
+    console.log('=== カビ価格計算終了 ===');
+
+    return finalPrice;
 }
 
 
@@ -126,6 +162,22 @@ function calculateDiscount(price, discountValue) {
 
 function calculateProduct(productId, productType = 'product') {
     try {
+        // フォーカス位置を保存（通常商品の場合）
+        const shouldPreserveFocus = productType === 'product';
+        let activeElement = null;
+        let activeElementRect = null;
+        let scrollY = 0;
+        let scrollX = 0;
+        
+        if (shouldPreserveFocus) {
+            activeElement = document.activeElement;
+            scrollY = window.scrollY;
+            scrollX = window.scrollX;
+            if (activeElement && activeElement !== document.body) {
+                activeElementRect = activeElement.getBoundingClientRect();
+            }
+        }
+    
         const productNum = parseInt(productId.replace(/[^0-9]/g, ''));
         const prefix = productType === 'product' ? '' : 'kiso-';
         
@@ -180,12 +232,6 @@ function calculateProduct(productId, productType = 'product') {
                     const discount = calculateDiscount(basePrice, discountValue);
                     priceExTax = basePrice - discount;
 
-                    if (category === "新規工事" && (item.includes("外基礎") || item.includes("中基礎"))) {
-                        if (checkKisoSetDiscount(selectedProducts)) {
-                            priceExTax -= 20000;
-                        }
-                    }
-
                     priceInTax = Math.floor(priceExTax * 1.1);
                     kisoName = category === "クラック" 
                         ? `${item} ${height}cm ${length}個`
@@ -207,8 +253,11 @@ function calculateProduct(productId, productType = 'product') {
                 const discountValue = parseFloat(discountElement.value) || 0;
 
                 if ((category === "そのほか" && item === "カビ") || 
-                    (category === "消毒" && item === "カビ消毒")) {
-                    priceExTax = calculateKabiPrice(quantity, selectedProducts);
+                    (category === "消毒" && item === "カビ")) {
+                    // 現在の商品も含めて判定する
+                    const currentProduct = { category, item, quantity };
+                    const allProducts = [...selectedProducts, currentProduct];
+                    priceExTax = calculateKabiPrice(quantity, allProducts);
                 } else if (category === "そのほか" && item === "BM") {
                     priceExTax = calculateBMPrice(quantity, selectedProducts);
                 } else if (category === "床下機器" && item === "SO2買") {
@@ -247,6 +296,34 @@ function calculateProduct(productId, productType = 'product') {
 
         if (priceExTax > 0) {
             updateSelectedProducts(productId, category, item, kisoName, priceExTax, priceInTax);
+        }
+        
+        // フォーカス位置を復元（通常商品の場合）
+        if (shouldPreserveFocus) {
+            setTimeout(() => {
+                if (activeElement && activeElement !== document.body && document.contains(activeElement)) {
+                    try {
+                        activeElement.focus();
+                        
+                        // 元の要素の位置を維持するためにスクロール調整
+                        if (activeElementRect) {
+                            const newRect = activeElement.getBoundingClientRect();
+                            const deltaY = newRect.top - activeElementRect.top;
+                            const deltaX = newRect.left - activeElementRect.left;
+                            
+                            if (Math.abs(deltaY) > 1 || Math.abs(deltaX) > 1) {
+                                window.scrollTo(scrollX - deltaX, scrollY - deltaY);
+                            }
+                        }
+                    } catch (e) {
+                        // フォーカス復元に失敗した場合は、スクロール位置のみ復元
+                        window.scrollTo(scrollX, scrollY);
+                    }
+                } else {
+                    // アクティブ要素がない場合は、スクロール位置のみ復元
+                    window.scrollTo(scrollX, scrollY);
+                }
+            }, 10); // updateSummaryより少し遅らせる
         }
 
     } catch (error) {
@@ -379,7 +456,24 @@ function updateSummary() {
     const summaryList = document.getElementById('summary-list');
     if (!summaryList) return;
     
+    // 現在のフォーカス要素とスクロール位置を保存
+    const activeElement = document.activeElement;
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
+    
+    // アクティブ要素の位置を相対的に記録
+    let activeElementRect = null;
+    if (activeElement && activeElement !== document.body) {
+        activeElementRect = activeElement.getBoundingClientRect();
+    }
+    
     summaryList.innerHTML = '';
+    
+    // 初回プレースホルダーを削除（既にinnerHTMLでクリアされているが、明示的に処理）
+    const placeholder = summaryList.querySelector('.summary-placeholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
     
     // 基礎セット割引の通知
     if (checkKisoSetDiscount(selectedProducts)) {
@@ -391,22 +485,129 @@ function updateSummary() {
 
     const validProducts = selectedProducts.filter(product => product.priceExTax > 0);
     if (validProducts.length > 0) {
+        // 基礎セット値引きのチェック
+        const hasKisoSetDiscount = checkKisoSetDiscount(selectedProducts);
+        
         // 商品名のグループ
         const productGroup = document.createElement('li');
         productGroup.className = 'summary-group';
         const productNames = validProducts.map(p => {
+            let productName = '';
             if (p.productId.includes('kiso-')) {
                 const fullName = p.item;
-                const match = fullName.match(/(外基礎|中基礎)/);
-                return match ? match[0] : fullName;
+                // クラック商品の場合は商品名のみを抽出
+                if (fullName.includes('クラック')) {
+                    const match = fullName.match(/(外クラック|中片クラック|中両面クラック)/);
+                    productName = match ? match[0] : fullName.split(' ')[0];
+                } else {
+                    // 基礎商品の場合
+                    const match = fullName.match(/(外基礎|中基礎)/);
+                    if (match) {
+                        productName = match[0];
+                        // 追加工事の場合は「追」を追加
+                        if (p.category === '追加工事') {
+                            productName += '追';
+                        }
+                    } else {
+                        productName = fullName;
+                    }
+                }
+            } else {
+                productName = p.item;
             }
-            return p.item;
+            
+            // 値引きがある場合は▲値引き額を追加
+            if (p.discountValue && p.discountValue > 0) {
+                if (p.discountValue < 100) {
+                    productName += `▲${p.discountValue}%`;
+                } else {
+                    productName += `▲${formatNumber(p.discountValue)}`;
+                }
+            }
+            
+            return productName;
         }).join('・');
 
+        // 基礎セット値引きがある場合は特別表記に変更
+        let finalProductNames = productNames;
+        if (hasKisoSetDiscount) {
+            // 外基礎・中基礎を抽出して()で囲む
+            const kisoProducts = validProducts.filter(p => 
+                p.productId.includes('kiso-') && 
+                (p.item.includes('外基礎') || p.item.includes('中基礎'))
+            );
+            const kisoNames = kisoProducts.map(p => {
+                const match = p.item.match(/(外基礎|中基礎)/);
+                if (match) {
+                    let productName = match[0];
+                    // 追加工事の場合は「追」を追加
+                    if (p.category === '追加工事') {
+                        productName += '追';
+                    }
+                    return productName;
+                } else {
+                    return p.item;
+                }
+            });
+            
+            // 外基礎・中基礎以外の商品
+            const otherProducts = validProducts.filter(p => 
+                !p.productId.includes('kiso-') || 
+                (!p.item.includes('外基礎') && !p.item.includes('中基礎'))
+            );
+            const otherNames = otherProducts.map(p => {
+                let productName = '';
+                if (p.productId.includes('kiso-')) {
+                    const fullName = p.item;
+                    // クラック商品の場合は商品名のみを抽出
+                    if (fullName.includes('クラック')) {
+                        const match = fullName.match(/(外クラック|中片クラック|中両面クラック)/);
+                        productName = match ? match[0] : fullName.split(' ')[0];
+                    } else {
+                        // 基礎商品の場合
+                        const match = fullName.match(/(外基礎|中基礎)/);
+                        if (match) {
+                            productName = match[0];
+                            // 追加工事の場合は「追」を追加
+                            if (p.category === '追加工事') {
+                                productName += '追';
+                            }
+                        } else {
+                            productName = fullName;
+                        }
+                    }
+                } else {
+                    productName = p.item;
+                }
+                
+                // 値引きがある場合は▲値引き額を追加
+                if (p.discountValue && p.discountValue > 0) {
+                    if (p.discountValue < 100) {
+                        productName += `▲${p.discountValue}%`;
+                    } else {
+                        productName += `▲${formatNumber(p.discountValue)}`;
+                    }
+                }
+                
+                return productName;
+            });
+            
+            // (外基礎・中基礎)▲セット の形式で表記
+            const kisoSetName = `(${kisoNames.join('・')})▲セット`;
+            const allNames = otherNames.length > 0 ? [kisoSetName, ...otherNames] : [kisoSetName];
+            finalProductNames = allNames.join('・');
+        }
+
+        // 一般管理費がチェックされている場合は「管有」を追加
+        const managementFeeChecked = document.getElementById('management-fee-switch').checked;
+        if (managementFeeChecked) {
+            finalProductNames += '・管有';
+        }
+
         productGroup.innerHTML = `
-            <button class="copy-button" data-copy="${productNames}">コピー</button>
             <div class="summary-label">商品：</div>
-            <div class="summary-content">${productNames}</div>
+            <div class="summary-content">${finalProductNames}</div>
+            <button class="copy-button" data-copy="${finalProductNames}">コピー</button>
         `;
         summaryList.appendChild(productGroup);
 
@@ -430,14 +631,20 @@ function updateSummary() {
         }).join('/');
 
         quantityGroup.innerHTML = `
-            <button class="copy-button" data-copy="${quantities}">コピー</button>
             <div class="summary-label">数量：</div>
             <div class="summary-content">${quantities}</div>
+            <button class="copy-button" data-copy="${quantities}">コピー</button>
         `;
         summaryList.appendChild(quantityGroup);
 
         // 合計金額のグループ
         let totalExTax = validProducts.reduce((sum, p) => sum + p.priceExTax, 0);
+        
+        // 基礎セット値引きを適用
+        if (hasKisoSetDiscount) {
+            totalExTax -= 40000;
+        }
+        
         if (document.getElementById('management-fee-switch').checked) {
             totalExTax += 20000;
         }
@@ -445,9 +652,9 @@ function updateSummary() {
         totalGroup.className = 'summary-group';
         const formattedTotal = formatNumber(totalExTax);
         totalGroup.innerHTML = `
-            <button class="copy-button" data-copy="${formattedTotal}">コピー</button>
             <div class="summary-label">合計金額(抜)：</div>
             <div class="summary-content">${formattedTotal}円</div>
+            <button class="copy-button" data-copy="${formattedTotal}">コピー</button>
         `;
         summaryList.appendChild(totalGroup);
 
@@ -473,6 +680,12 @@ function updateSummary() {
     let finalTotalExTax = validProducts.reduce((sum, p) => sum + p.priceExTax, 0);
     let finalTotalInTax = validProducts.reduce((sum, p) => sum + p.priceInTax, 0);
     
+    // 基礎セット値引きを適用
+    if (checkKisoSetDiscount(selectedProducts)) {
+        finalTotalExTax -= 40000;
+        finalTotalInTax -= 40000;
+    }
+    
     if (document.getElementById('management-fee-switch').checked) {
         finalTotalExTax += 20000;
         finalTotalInTax += 22000;
@@ -480,6 +693,33 @@ function updateSummary() {
     
     if (totalExTaxElement) totalExTaxElement.textContent = formatNumber(finalTotalExTax);
     if (totalInTaxElement) totalInTaxElement.textContent = formatNumber(finalTotalInTax);
+    
+    // フォーカスと画面位置を復元
+    setTimeout(() => {
+        // フォーカスを復元
+        if (activeElement && activeElement !== document.body && document.contains(activeElement)) {
+            try {
+                activeElement.focus();
+                
+                // 元の要素の位置を維持するためにスクロール調整
+                if (activeElementRect) {
+                    const newRect = activeElement.getBoundingClientRect();
+                    const deltaY = newRect.top - activeElementRect.top;
+                    const deltaX = newRect.left - activeElementRect.left;
+                    
+                    if (Math.abs(deltaY) > 1 || Math.abs(deltaX) > 1) {
+                        window.scrollTo(scrollX - deltaX, scrollY - deltaY);
+                    }
+                }
+            } catch (e) {
+                // フォーカス復元に失敗した場合は、スクロール位置のみ復元
+                window.scrollTo(scrollX, scrollY);
+            }
+        } else {
+            // アクティブ要素がない場合は、スクロール位置のみ復元
+            window.scrollTo(scrollX, scrollY);
+        }
+    }, 0);
 }
 
 
@@ -563,6 +803,17 @@ function setupTabs() {
 // 初期化処理
 window.onload = function() {
     try {
+        // 初回スクロール問題を防ぐため、サマリーを先に初期化
+        const summaryList = document.getElementById('summary-list');
+        if (summaryList && summaryList.children.length === 0) {
+            // 空のサマリーリストに最小コンテンツを追加して高さを確保
+            const placeholder = document.createElement('li');
+            placeholder.className = 'summary-placeholder';
+            placeholder.style.visibility = 'hidden';
+            placeholder.style.height = '60px';
+            summaryList.appendChild(placeholder);
+        }
+        
         setupTabs();
         setupEventListeners(1, "product");
         setupEventListeners(1, "kiso-product");

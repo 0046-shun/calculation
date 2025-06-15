@@ -1,46 +1,51 @@
 const productsData = {
   "消毒": {
-    "再消毒": {
+    "再": {
       "base": 70000,
       "price": 1500,
       "areaThreshold": 40
     },
-    "新規予防消毒": {
+    "新予防": {
       "base": 100000,
       "price": 2300,
       "areaThreshold": 40
     },
-    "新規駆除消毒": {
+    "ﾔ駆除": {
       "base": 140000,
       "price": 3300,
       "areaThreshold": 40
     },
-    "保証切予防": {
+    "ｲｴ駆除": {
+      "base": 140000,
+      "price": 3300,
+      "areaThreshold": 40
+    },
+    "切予防": {
       "base": 88000,
       "price": 2000,
       "areaThreshold": 40
     },
-    "増築予防消毒": {
+    "増築予防": {
       "base": 0,
       "price": 2100,
       "areaThreshold": 40
     },
-    "建前予防消毒": {
+    "建前予防": {
       "base": 84000,
       "price": 2100,
       "areaThreshold": 40
     },
-    "ベイト新規": {
+    "ベイト新": {
       "base": 300000,
       "price": 3600,
       "areaThreshold": 40
     },
-    "ベイト継続": {
+    "ベイト継": {
       "base": 220000,
       "price": 2000,
       "areaThreshold": 40
     },
-    "カビ消毒": {  // 名前は任意に変更可能です
+    "カビ": {  // 名前は任意に変更可能です
       "price": 2500,
       "discountConditions": [
           { "type": "category", "value": "消毒" }
@@ -86,7 +91,11 @@ const productsData = {
       "base": 0,
       "price": 66000
     },
-    "DC2": {
+    "DC2新": {
+      "base": 0,
+      "price": 77000
+    },
+    "DC2買": {
       "base": 0,
       "price": 77000
     },
@@ -146,26 +155,26 @@ const productsData = {
     }
   },
   "断熱遮熱": {
-    "床下断熱": {
+    "床断熱": {
       "base": 440000,
       "price": 6000,
       "areaThreshold": 33
     },
-    "天井遮熱": {
+    "遮熱": {
       "base": 440000,
       "price": 7000,
       "areaThreshold": 33
     },
-    "天井断熱": {
+    "天断熱": {
       "base": 310000,
       "price": 10000,
       "areaThreshold": 20
     },
-    "廃棄物処理33平米まで": {
+    "処理33未満": {
       "base": 50000,
       "price": 0
     },
-    "廃棄物処理33平米以上": {
+    "処理33以上": {
       "base": 65000,
       "price": 0
     }
@@ -463,3 +472,4 @@ const kisoProductsData = {
 };
 
 window.goodsData = productsData;
+window.kisoProductsData = kisoProductsData;  // kisoProductsDataをグローバルに公開
