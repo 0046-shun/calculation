@@ -170,6 +170,19 @@ const productsData = {
       "price": 10000,
       "areaThreshold": 20
     },
+    "床断熱追": {
+      "base": 210000,
+      "price": 6000,
+      "areaThreshold": 33
+    },
+    "遮熱追": {
+      "base": 220000,
+      "price": 7000,
+      "areaThreshold": 33
+    },
+    "天断熱追": {
+      "price": 10000,
+    },
     "処理33未満": {
       "base": 50000,
       "price": 0
