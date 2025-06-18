@@ -248,13 +248,16 @@ const productsData = {
       "areaThreshold": 8
     },
     "島特1": {
-      "price": 30000
+      "base": 30000,
+      "price": 0
     },
     "離島1・2": {
-      "price": 20000
+      "base": 20000,
+      "price": 0
     },
     "離島3": {
-      "price": 5000
+      "base": 5000,
+      "price": 0
     }
   }
 };

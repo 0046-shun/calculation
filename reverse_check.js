@@ -322,7 +322,8 @@ function renderCheckTable() {
             nameParts = processedName.split(/[・･]/);
         }
 
-        const qtyParts = qty.split('/').map(q => q.trim());
+        // 数量の区切りを「/」「・」「･」すべて対応
+        const qtyParts = qty.split(/[\/・･]/).map(q => q.trim());
         let totalExTax = 0;
         let totalInTax = 0;
         let inputNames = [];
@@ -347,7 +348,11 @@ function renderCheckTable() {
             let trimmed = part.trim();
             if (!trimmed) return;
 
-            console.log(`\n商品パート ${partIdx + 1}:`, trimmed);
+            // 「再▲○○％」や「▲○○％」の正規化（JA以外）
+            // 例: 再▲神社仏閣10％ → 再▲10％、▲縁者5％ → ▲5％
+            trimmed = trimmed.replace(/(再)?▲(?!JA)([^\d]*)([\d,.]+\s*[％%円])/g, (match, sai, notJA, percent) => {
+                return (sai ? '再▲' : '▲') + percent.trim();
+            });
 
             // 入力値または選択値がある場合はそれを使用
             const currentState = inputStates[lineIdx].parts[partIdx];
@@ -585,6 +590,16 @@ function renderCheckTable() {
                     amount -= calculateDiscount(amount, discountValue);
                 } else if (matchedCategory === "そのほか" && matchedKey === "BM") {
                     amount = calculateBMPrice(thisQty, selectedProducts);
+                    amount -= calculateDiscount(amount, discountValue);
+                } else if (matchedCategory === "床下機器" && matchedKey === "SO2買") {
+                    // 他の選択商品をチェック
+                    const hasSpecialDiscount = selectedProducts.some(product => 
+                        product.item && (product.item.includes("DC2") || product.item.includes("60"))
+                    );
+
+                    // 特別割引価格または通常価格を適用
+                    const unitPrice = hasSpecialDiscount ? 83000 : matched.price;
+                    amount = unitPrice * thisQty;
                     amount -= calculateDiscount(amount, discountValue);
                 } else {
                     let totalPrice = matched.base || 0;
@@ -904,9 +919,9 @@ function clearAllInputs() {
 // 括弧による値引き表記を処理する関数
 function parseGroupDiscount(name) {
     // (商品1・商品2)▲5% のような表記を解析
-    const groupDiscountPattern = /\(([^)]+)\)▲([0-9]+(?:\.[0-9]+)?)\s*[%％]/;
-    const groupDiscountYenPattern = /\(([^)]+)\)▲([0-9,]+)\s*円?/;
-    const groupDiscountJAPattern = /\(([^)]+)\)▲JA/;
+    const groupDiscountPattern = /\(([^)]+)\)(新)?▲([0-9]+(?:\.[0-9]+)?)\s*[%％]/;
+    const groupDiscountYenPattern = /\(([^)]+)\)(新)?▲([0-9,]+)\s*円?/;
+    const groupDiscountJAPattern = /\(([^)]+)\)(新)?▲JA/;
     
     let groupDiscount = null;
     let productsInGroup = [];
@@ -921,44 +936,56 @@ function parseGroupDiscount(name) {
     const percentMatch = name.match(groupDiscountPattern);
     if (percentMatch) {
         const productsStr = percentMatch[1];
-        const discountPercent = parseFloat(percentMatch[2]);
+        const hasShin = !!percentMatch[2];
+        const discountPercent = parseFloat(percentMatch[3]);
         
-        // 商品名に()が含まれている場合を考慮して分割
         productsInGroup = splitProductsWithParentheses(productsStr);
+        // 括弧内の商品名に「新」を付与し、値引き表記も各商品に適用
+        const processedProducts = productsInGroup.map(product => {
+            // 商品名に「新」が含まれていない場合や、括弧外に新がある場合は追加
+            let productWithNew = product;
+            if (hasShin && !product.includes('新')) productWithNew += '新';
+            else if (!hasShin && !product.includes('新')) productWithNew += '新';
+            // 値引き表記を追加
+            return productWithNew + `▲${discountPercent}%`;
+        });
         groupDiscount = { type: 'percent', value: discountPercent };
-        cleanedName = name.replace(groupDiscountPattern, productsStr);
-        
-        console.log('グループ値引き(%)を検出:', { products: productsInGroup, discount: discountPercent });
-        return { groupDiscount, productsInGroup, cleanedName };
+        cleanedName = name.replace(groupDiscountPattern, processedProducts.join('・'));
+        return { groupDiscount, productsInGroup: processedProducts, cleanedName };
     }
-    
     // 円値引きをチェック
     const yenMatch = name.match(groupDiscountYenPattern);
     if (yenMatch) {
         const productsStr = yenMatch[1];
-        const discountYen = parseInt(yenMatch[2].replace(/,/g, ''), 10);
-        
+        const hasShin = !!yenMatch[2];
+        const discountYen = parseInt(yenMatch[3].replace(/,/g, ''), 10);
         productsInGroup = splitProductsWithParentheses(productsStr);
+        const processedProducts = productsInGroup.map(product => {
+            let productWithNew = product;
+            if (hasShin && !product.includes('新')) productWithNew += '新';
+            else if (!hasShin && !product.includes('新')) productWithNew += '新';
+            return productWithNew + `▲${formatNumber(discountYen)}円`;
+        });
         groupDiscount = { type: 'yen', value: discountYen };
-        cleanedName = name.replace(groupDiscountYenPattern, productsStr);
-        
-        console.log('グループ値引き(円)を検出:', { products: productsInGroup, discount: discountYen });
-        return { groupDiscount, productsInGroup, cleanedName };
+        cleanedName = name.replace(groupDiscountYenPattern, processedProducts.join('・'));
+        return { groupDiscount, productsInGroup: processedProducts, cleanedName };
     }
-    
     // JA値引きをチェック
     const jaMatch = name.match(groupDiscountJAPattern);
     if (jaMatch) {
         const productsStr = jaMatch[1];
-        
+        const hasShin = !!jaMatch[2];
         productsInGroup = splitProductsWithParentheses(productsStr);
-        groupDiscount = { type: 'percent', value: 10 }; // JA = 10%
-        cleanedName = name.replace(groupDiscountJAPattern, productsStr);
-        
-        console.log('グループ値引き(JA)を検出:', { products: productsInGroup, discount: '10%' });
-        return { groupDiscount, productsInGroup, cleanedName };
+        const processedProducts = productsInGroup.map(product => {
+            let productWithNew = product;
+            if (hasShin && !product.includes('新')) productWithNew += '新';
+            else if (!hasShin && !product.includes('新')) productWithNew += '新';
+            return productWithNew + '▲JA';
+        });
+        groupDiscount = { type: 'percent', value: 10 };
+        cleanedName = name.replace(groupDiscountJAPattern, processedProducts.join('・'));
+        return { groupDiscount, productsInGroup: processedProducts, cleanedName };
     }
-    
     return { groupDiscount: null, productsInGroup: [], cleanedName: name };
 }
 
