@@ -119,13 +119,12 @@ function parseQuantity(qty) {
     return match ? Number(match[1]) : 0;
 }
 
-function parseKisoQuantity(qty) {
-    // 30*20 → {height: 30, length: 20}
-    const match = qty.match(/([0-9]+)\*([0-9]+)/);
-    if (match) {
-        return { height: Number(match[1]), length: Number(match[2]) };
-    }
-    return { height: 0, length: 0 };
+function parseKisoQuantity(qtyStr) {
+    const [height, length] = qtyStr.split('*').map(n => parseInt(n.trim(), 10));
+    return {
+        height: normalizeKisoHeight(height || 0),
+        length: length || 0
+    };
 }
 
 // 初回ペーストデータ保持用
@@ -540,16 +539,38 @@ function renderCheckTable() {
                 }
             }
 
-            // 部分一致検索
+            // 完全一致がなければ部分一致候補を取得
             let candidates = [];
             if (!matched) {
                 if (isKiso) {
                     candidates = kisoCandidates;
-                    console.log('基礎工事候補:', candidates);
                 } else {
-                    // 部分一致する商品を検索
                     candidates = findPartialMatches(nameForSearch);
-                    console.log('部分一致候補:', candidates);
+                }
+                // 部分一致候補が1件のみなら自動選択
+                if (candidates.length === 1) {
+                    const autoMatch = candidates[0];
+                    // goodsData/kisoProductsDataからカテゴリ特定
+                    let found = false;
+                    for (const [cat, items] of Object.entries(window.goodsData || {})) {
+                        if (items[autoMatch]) {
+                            matched = items[autoMatch];
+                            matchedKey = autoMatch;
+                            matchedCategory = cat;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        for (const [cat, items] of Object.entries(window.kisoProductsData || {})) {
+                            if (items[autoMatch]) {
+                                matched = items[autoMatch];
+                                matchedKey = autoMatch;
+                                matchedCategory = cat;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -630,9 +651,10 @@ function renderCheckTable() {
         });
 
         totalInTax = Math.floor(totalExTax * 1.1);
-        const pasted = Number(price.toString().replace(/[^\d.]/g, ''));
-        const isMatch = (totalExTax !== null && pasted === totalExTax);
-        console.log('合計金額:', { totalExTax, totalInTax, pasted, isMatch });
+        const pasted = Number(price.toString().replace(/[^0-9.]/g, ''));
+        const diff = Math.abs(pasted - totalExTax);
+        const isMatch = (totalExTax !== null && Math.floor(diff) === 0);
+        console.log('合計金額:', { totalExTax, totalInTax, pasted, diff, isMatch });
 
         // 表示用テーブル（一致・不一致でクラスを分ける）
         const tableClass = isMatch ? 'match-table' : 'mismatch-table';
@@ -760,15 +782,6 @@ function getKisoCandidates(category) {
     }
 }
 
-// 基礎工事の数量をパースする関数
-function parseKisoQuantity(qtyStr) {
-    const [height, length] = qtyStr.split('*').map(n => parseInt(n.trim(), 10));
-    return {
-        height: height || 0,
-        length: length || 0
-    };
-}
-
 function formatNumber(number) {
     return number.toLocaleString();
 }
@@ -776,77 +789,57 @@ function formatNumber(number) {
 function findPartialMatches(searchName) {
     console.log(`部分一致検索開始: "${searchName}"`);
     const matches = [];
-    
-    // 検索名を正規化
     const normalizedSearch = normalizeProductName(searchName);
-    console.log(`正規化された検索名: "${normalizedSearch}"`);
-
-    // 通常商品データを検索（大項目内の小項目を検索）
+    // 通常商品データ
     if (window.goodsData) {
         for (const [category, items] of Object.entries(window.goodsData)) {
-            console.log(`カテゴリ "${category}" を検索中...`);
-            
-            // カテゴリ内の各商品（小項目）を検索
             for (const [itemName, itemData] of Object.entries(items)) {
-                // 商品名を正規化
                 const normalizedItem = normalizeProductName(itemName);
-                console.log(`通常商品比較: "${normalizedItem}" vs "${normalizedSearch}"`);
-
-                // 部分一致の条件
-                if (normalizedItem.includes(normalizedSearch) || 
+                if (
+                    normalizedItem.includes(normalizedSearch) ||
                     normalizedSearch.includes(normalizedItem) ||
-                    calculateSimilarity(normalizedItem, normalizedSearch) > 0.6) {
-                    console.log(`通常商品で部分一致を検出: "${itemName}" (類似度: ${calculateSimilarity(normalizedItem, normalizedSearch)})`);
+                    calculateSimilarity(normalizedItem, normalizedSearch) > 0.6
+                ) {
                     matches.push(itemName);
                 }
             }
         }
-    } else {
-        console.warn('通常商品データが見つかりません');
     }
-
-    // 基礎関連商品データを検索
+    // 基礎商品データ
     if (window.kisoProductsData) {
         for (const [category, items] of Object.entries(window.kisoProductsData)) {
-            console.log(`基礎カテゴリ "${category}" を検索中...`);
-            
-            // カテゴリ内の各商品を検索
             for (const [itemName, itemData] of Object.entries(items)) {
-                // 商品名を正規化
                 const normalizedItem = normalizeProductName(itemName);
-                console.log(`基礎商品比較: "${normalizedItem}" vs "${normalizedSearch}"`);
-
-                // 部分一致の条件
-                if (normalizedItem.includes(normalizedSearch) || 
+                if (
+                    normalizedItem.includes(normalizedSearch) ||
                     normalizedSearch.includes(normalizedItem) ||
-                    calculateSimilarity(normalizedItem, normalizedSearch) > 0.6) {
-                    console.log(`基礎商品で部分一致を検出: "${itemName}" (類似度: ${calculateSimilarity(normalizedItem, normalizedSearch)})`);
+                    calculateSimilarity(normalizedItem, normalizedSearch) > 0.6
+                ) {
                     matches.push(itemName);
                 }
             }
         }
-    } else {
-        console.warn('基礎関連商品データが見つかりません');
     }
-
     // 類似度でソート
     matches.sort((a, b) => {
         const similarityA = calculateSimilarity(normalizeProductName(a), normalizedSearch);
         const similarityB = calculateSimilarity(normalizeProductName(b), normalizedSearch);
         return similarityB - similarityA;
     });
-
-    console.log(`部分一致検索結果: ${matches.length}件`);
-    matches.forEach(match => console.log(`- ${match}`));
     return matches;
 }
 
 function normalizeProductName(name) {
     if (!name) return '';
+    // 略称を正規化
     return name
-        .replace(/[・、]/g, '')  // 区切り文字を削除
-        .replace(/\s+/g, '')    // 空白を削除
-        .toLowerCase();         // 小文字に変換
+        .replace(/[・\u30fb,、\s]/g, '')
+        .replace(/外クラ|外ｸﾗ|外クラック/g, '外クラック')
+        .replace(/中両クラ|中両ｸﾗ|中両面クラック/g, '中両面クラック')
+        .replace(/中片クラ|中片ｸﾗ|中片面クラック/g, '中片面クラック')
+        .replace(/外基礎/g, '外基礎')
+        .replace(/中基礎/g, '中基礎')
+        .toLowerCase();
 }
 
 function calculateSimilarity(str1, str2) {
@@ -1019,4 +1012,13 @@ function splitProductsWithParentheses(productsStr) {
     }
     
     return products;
+}
+
+function normalizeKisoHeight(height) {
+    if (height <= 30) return 30;
+    if (height <= 40) return 40;
+    if (height <= 50) return 50;
+    if (height <= 60) return 60;
+    if (height <= 70) return 70;
+    return 80;
 } 
