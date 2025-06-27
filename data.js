@@ -209,7 +209,7 @@ const productsData = {
         "areaThreshold": 1
     },
     "基礎化粧": {
-        "base": 100000,
+        "base": 112000,
         "price": 12000,
         "areaThreshold": 1
     }
