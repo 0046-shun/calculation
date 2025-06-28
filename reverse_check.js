@@ -416,6 +416,10 @@ function renderCheckTable() {
 
             // 値引き表記を除去した商品名で検索
             let nameForSearch = removeDiscountFromName(searchName);
+            // 末尾が「追」の場合は「新」に変換
+            nameForSearch = nameForSearch.replace(/追$/, '新');
+            // BMで始まる場合はBMに正規化
+            nameForSearch = nameForSearch.replace(/^BM.*/, 'BM');
             inputNames.push(nameForSearch);
             console.log('検索用商品名:', nameForSearch);
 
