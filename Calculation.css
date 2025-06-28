@@ -236,7 +236,7 @@ button:active {
   box-shadow: var(--shadow-xl);
   border: 1px solid var(--border-color);
   position: relative;
-  min-height: 580px; /* サマリーエリア全体の最小高さを設定して商品フォームの位置を安定化 */
+  min-height: 650px; /* サマリーエリア全体の最小高さを増やして商品フォームの位置をより安定化 */
 }
 
 #summary::before {
@@ -284,16 +284,21 @@ button:active {
 
 /* サマリーエリアが空の時の表示 */
 #summary-list:empty {
-  min-height: 60px;
+  min-height: 120px; /* 空の時の最小高さを増やしてより安定した表示に */
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--background-tertiary);
+  border: 2px dashed var(--border-color);
 }
 
 #summary-list:empty::before {
   content: "商品を選択すると、ここに表示されます";
   color: var(--text-muted);
   font-style: italic;
+  font-size: 16px;
+  text-align: center;
+  padding: var(--spacing-md);
 }
 
 /* サマリーグループの横並び表示 */

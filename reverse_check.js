@@ -315,8 +315,24 @@ function renderCheckTable() {
             const otherProducts = allParts.filter(part => 
                 !groupProducts.some(groupProduct => part.trim() === groupProduct.trim())
             );
-            nameParts = [...groupProducts, ...otherProducts.filter(part => part.trim())];
-            console.log('グループ値引き商品分割:', { groupProducts, otherProducts, nameParts });
+            // グループ括弧ごとの商品名（例：(SO2(DC2))）を除外
+            const filteredOtherProducts = otherProducts.filter(part => {
+                const trimmed = part.trim();
+                // (xxx・yyy) のようなグループ括弧で囲まれたものは除外
+                if (/^\(.+・.+\)$/.test(trimmed)) return false;
+                return true;
+            });
+            // namePartsは展開済み商品名＋その他の商品名
+            nameParts = [...groupProducts, ...filteredOtherProducts.filter(part => part.trim())];
+            // 展開済み商品名の値引き情報も同じ内容で格納
+            discounts = groupProducts.map(gp => {
+                // 商品名から「新」「買」「▲○％」「▲○円」「▲JA」などの修飾語部分を抽出
+                const mods = gp.match(/(新|買|▲[0-9]+(?:\.[0-9]+)?[%％]?|▲[0-9,]+円?|▲JA)+/g);
+                return mods ? mods.join('') : '';
+            });
+            // その他の商品名の値引き情報も追加
+            discounts = [...discounts, ...filteredOtherProducts.map(() => '')];
+            console.log('グループ値引き商品分割:', { groupProducts, filteredOtherProducts, nameParts, discounts });
         } else {
             nameParts = processedName.split(/[・･]/);
         }
@@ -911,75 +927,64 @@ function clearAllInputs() {
 
 // 括弧による値引き表記を処理する関数
 function parseGroupDiscount(name) {
-    // (商品1・商品2)▲5% のような表記を解析
-    const groupDiscountPattern = /\(([^)]+)\)(新)?▲([0-9]+(?:\.[0-9]+)?)\s*[%％]/;
-    const groupDiscountYenPattern = /\(([^)]+)\)(新)?▲([0-9,]+)\s*円?/;
-    const groupDiscountJAPattern = /\(([^)]+)\)(新)?▲JA/;
-    
-    let groupDiscount = null;
-    let productsInGroup = [];
+    // ネスト対応のグループ括弧検出（全角・半角対応）
     let cleanedName = name;
-    
-    // 基礎セット値引きは除外（特別処理）
-    if (name.includes('(外基礎・中基礎)▲セット') || name.includes('（外基礎・中基礎）▲セット')) {
-        return { groupDiscount: null, productsInGroup: [], cleanedName: name };
+    let allProcessedProducts = [];
+    let i = 0;
+    while (i < cleanedName.length) {
+        if (cleanedName[i] === '(' || cleanedName[i] === '（') {
+            let start = i;
+            let parenCount = 1;
+            let j = i + 1;
+            while (j < cleanedName.length && parenCount > 0) {
+                if (cleanedName[j] === '(' || cleanedName[j] === '（') parenCount++;
+                else if (cleanedName[j] === ')' || cleanedName[j] === '）') parenCount--;
+                j++;
+            }
+            if (parenCount === 0) {
+                let groupEnd = j - 1;
+                // 括弧直後の修飾語を抽出（全角％対応）
+                let modStart = groupEnd + 1;
+                let modEnd = modStart;
+                while (modEnd < cleanedName.length) {
+                    const modMatch = cleanedName.slice(modEnd).match(/^(新|買|▲[0-9]+(?:\.[0-9]+)?[%％]|▲[0-9,]+円?|▲JA)/);
+                    if (modMatch) {
+                        modEnd += modMatch[0].length;
+                    } else {
+                        break;
+                    }
+                }
+                const groupStr = cleanedName.slice(start + 1, groupEnd);
+                const modifiersStr = cleanedName.slice(modStart, modEnd);
+                // 括弧内の商品名を分割
+                const productsInGroup = splitProductsWithParentheses(groupStr);
+                // 修飾語をすべて抽出
+                const modifiers = [];
+                let modMatch;
+                const modPattern = /(新|買|▲[0-9]+(?:\.[0-9]+)?[%％]|▲[0-9,]+円?|▲JA)/g;
+                while ((modMatch = modPattern.exec(modifiersStr)) !== null) {
+                    modifiers.push(modMatch[1].replace(/\s+/g, ''));
+                }
+                if (productsInGroup.length >= 2) {
+                    // 2つ以上ならグループ括弧として展開
+                    const processedProducts = productsInGroup.map(product => product + modifiers.join(''));
+                    allProcessedProducts = allProcessedProducts.concat(processedProducts);
+                    // 元の文字列を展開した商品名で置換
+                    cleanedName = cleanedName.slice(0, start) + processedProducts.join('・') + cleanedName.slice(modEnd);
+                    // 置換後の位置から再開
+                    i = start + processedProducts.join('・').length - 1;
+                } else {
+                    // 1つだけなら商品名の一部として扱う（置換しない）
+                    i = groupEnd;
+                }
+            } else {
+                // 括弧が閉じていない場合はbreak
+                break;
+            }
+        }
+        i++;
     }
-    
-    // パーセント値引きをチェック
-    const percentMatch = name.match(groupDiscountPattern);
-    if (percentMatch) {
-        const productsStr = percentMatch[1];
-        const hasShin = !!percentMatch[2];
-        const discountPercent = parseFloat(percentMatch[3]);
-        
-        productsInGroup = splitProductsWithParentheses(productsStr);
-        // 括弧内の商品名に「新」を付与し、値引き表記も各商品に適用
-        const processedProducts = productsInGroup.map(product => {
-            // 商品名に「新」が含まれていない場合や、括弧外に新がある場合は追加
-            let productWithNew = product;
-            if (hasShin && !product.includes('新')) productWithNew += '新';
-            else if (!hasShin && !product.includes('新')) productWithNew += '新';
-            // 値引き表記を追加
-            return productWithNew + `▲${discountPercent}%`;
-        });
-        groupDiscount = { type: 'percent', value: discountPercent };
-        cleanedName = name.replace(groupDiscountPattern, processedProducts.join('・'));
-        return { groupDiscount, productsInGroup: processedProducts, cleanedName };
-    }
-    // 円値引きをチェック
-    const yenMatch = name.match(groupDiscountYenPattern);
-    if (yenMatch) {
-        const productsStr = yenMatch[1];
-        const hasShin = !!yenMatch[2];
-        const discountYen = parseInt(yenMatch[3].replace(/,/g, ''), 10);
-        productsInGroup = splitProductsWithParentheses(productsStr);
-        const processedProducts = productsInGroup.map(product => {
-            let productWithNew = product;
-            if (hasShin && !product.includes('新')) productWithNew += '新';
-            else if (!hasShin && !product.includes('新')) productWithNew += '新';
-            return productWithNew + `▲${formatNumber(discountYen)}円`;
-        });
-        groupDiscount = { type: 'yen', value: discountYen };
-        cleanedName = name.replace(groupDiscountYenPattern, processedProducts.join('・'));
-        return { groupDiscount, productsInGroup: processedProducts, cleanedName };
-    }
-    // JA値引きをチェック
-    const jaMatch = name.match(groupDiscountJAPattern);
-    if (jaMatch) {
-        const productsStr = jaMatch[1];
-        const hasShin = !!jaMatch[2];
-        productsInGroup = splitProductsWithParentheses(productsStr);
-        const processedProducts = productsInGroup.map(product => {
-            let productWithNew = product;
-            if (hasShin && !product.includes('新')) productWithNew += '新';
-            else if (!hasShin && !product.includes('新')) productWithNew += '新';
-            return productWithNew + '▲JA';
-        });
-        groupDiscount = { type: 'percent', value: 10 };
-        cleanedName = name.replace(groupDiscountJAPattern, processedProducts.join('・'));
-        return { groupDiscount, productsInGroup: processedProducts, cleanedName };
-    }
-    return { groupDiscount: null, productsInGroup: [], cleanedName: name };
+    return { groupDiscount: null, productsInGroup: allProcessedProducts, cleanedName };
 }
 
 // 商品名に()が含まれている場合を考慮した分割関数
@@ -987,14 +992,12 @@ function splitProductsWithParentheses(productsStr) {
     const products = [];
     let current = '';
     let parenCount = 0;
-    
     for (let i = 0; i < productsStr.length; i++) {
         const char = productsStr[i];
-        
-        if (char === '(' || char === '（') {
+        if (char === '(') {
             parenCount++;
             current += char;
-        } else if (char === ')' || char === '）') {
+        } else if (char === ')') {
             parenCount--;
             current += char;
         } else if ((char === '・' || char === '･') && parenCount === 0) {
@@ -1006,11 +1009,9 @@ function splitProductsWithParentheses(productsStr) {
             current += char;
         }
     }
-    
     if (current.trim()) {
         products.push(current.trim());
     }
-    
     return products;
 }
 
