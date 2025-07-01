@@ -950,12 +950,6 @@ function resetForms() {
     if (totalExTaxElement) totalExTaxElement.textContent = '0';
     if (totalInTaxElement) totalInTaxElement.textContent = '0';
 
-    // 一般管理費のチェックボックスをリセット
-    const managementFeeCheckbox = document.getElementById('management-fee-switch');
-    if (managementFeeCheckbox) {
-        managementFeeCheckbox.checked = false;
-    }
-
     // イベントリスナーを再設定
     setupEventListeners(1, "product");
     setupEventListeners(1, "kiso-product");
