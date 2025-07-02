@@ -215,17 +215,8 @@ function calculateBasePrice(category, item, height, length) {
     }
 
     // 基礎セット割引のチェック（クラック系は対象外）
-    if (category === "新規工事" && (item.includes("外基礎") || item.includes("中基礎"))) {
-        const hasGaiKiso = window.selectedProducts?.some(p => 
-            p.category === "新規工事" && p.item.includes("外基礎"));
-        const hasNakaKiso = window.selectedProducts?.some(p => 
-            p.category === "新規工事" && p.item.includes("中基礎"));
-        
-        if (hasGaiKiso && hasNakaKiso) {
-            basePrice -= 20000;
-            console.log('基礎セット割引 20,000円を適用');
-        }
-    }
+    // 注意: この関数内では基礎セット割引を適用しない（renderCheckTableで一括処理）
+    // 重複適用を防ぐため、ここでは割引を適用しない
 
     console.log(`最終計算金額: ${basePrice}`);
     return basePrice;
@@ -337,6 +328,30 @@ function renderCheckTable() {
             nameParts = processedName.split(/[・･]/);
         }
 
+        // ★ここから外基礎・中基礎＋▲セット/セットの正規化処理（全partに適用）
+        nameParts = nameParts.map(part => {
+            if (part.match(/外基礎|中基礎/)) {
+                return part.replace(/[\(\)（）]/g, '')
+                           .replace(/▲セット|▲ｾｯﾄ|セット|ｾｯﾄ/g, '')
+                           .trim();
+            }
+            return part;
+        });
+
+        // ★ここから外基礎・中基礎＋▲セット/セットの特別処理
+        let isKisoSetLine = false;
+        if (nameParts.length === 1 && (nameParts[0].includes('外基礎') || nameParts[0].includes('中基礎')) && (nameParts[0].includes('▲セット') || nameParts[0].includes('セット'))) {
+            // 1行で括弧付きや▲セット付きの場合
+            nameParts = nameParts[0]
+                .replace(/[\(（]?外基礎[\)）]?/g, '外基礎')
+                .replace(/[\(（]?中基礎[\)）]?/g, '中基礎')
+                .replace(/▲セット|セット/g, '')
+                .split(/[・･]/)
+                .map(part => part.trim())
+                .filter(Boolean);
+            isKisoSetLine = true;
+        }
+
         // 数量の区切りを「/」「・」「･」すべて対応
         const qtyParts = qty.split(/[\/・･]/).map(q => q.trim());
         let totalExTax = 0;
@@ -350,6 +365,14 @@ function renderCheckTable() {
         let selectedProducts = [];
         let originalDiscounts = [];
         let originalQtys = [...qtyParts];
+
+        // 基礎セット値引きのチェック用変数
+        let hasGaiKiso = false;
+        let hasNakaKiso = false;
+        let gaiKisoAmount = 0;
+        let nakaKisoAmount = 0;
+        let gaiKisoPartIdx = -1;
+        let nakaKisoPartIdx = -1;
 
         nameParts.forEach((part, partIdx) => {
             // パートの状態を初期化（初回のみ）
@@ -393,8 +416,13 @@ function renderCheckTable() {
                 console.log('グループ値引きを適用:', { product: trimmed, discount: discountValue });
             }
             
+            // ★値引欄の特別処理
             let discountLabel = '';
-            if (searchName.includes('(外基礎・中基礎)▲セット') || searchName.includes('（外基礎・中基礎）▲セット')) {
+            if (part === '外基礎' || part === '中基礎') {
+                discountLabel = 'セット';
+            } else if (isKisoSetLine && (part === '外基礎' || part === '中基礎')) {
+                discountLabel = 'セット';
+            } else if (searchName.includes('(外基礎・中基礎)▲セット') || searchName.includes('（外基礎・中基礎）▲セット')) {
                 discountLabel = 'セット';
             } else if (hasGroupDiscount && groupDiscountInfo.productsInGroup.includes(trimmed)) {
                 if (groupDiscountInfo.groupDiscount.type === 'percent') {
@@ -471,6 +499,17 @@ function renderCheckTable() {
                 }
                 kisoCandidates = getKisoCandidates(kisoCategory);
                 console.log('基礎商品判定:', { isKiso, kisoCategory, candidates: kisoCandidates });
+                
+                // 外基礎・中基礎の判定と記録
+                if (kisoCategory === '新規工事') {
+                    if (nameForSearch.includes('外基礎')) {
+                        hasGaiKiso = true;
+                        gaiKisoPartIdx = partIdx;
+                    } else if (nameForSearch.includes('中基礎')) {
+                        hasNakaKiso = true;
+                        nakaKisoPartIdx = partIdx;
+                    }
+                }
             }
 
             // 数量を割り当て（基礎商品・クラック系の高さ・長さを先に取得）
@@ -624,6 +663,13 @@ function renderCheckTable() {
                             discount: calculateDiscount(amount, discountValue), 
                             finalAmount: amount 
                         });
+                        
+                        // 外基礎・中基礎の金額を記録（基礎セット値引き用）
+                        if (matchedKey.includes('外基礎')) {
+                            gaiKisoAmount = amount + calculateDiscount(amount, discountValue); // 値引き前の金額
+                        } else if (matchedKey.includes('中基礎')) {
+                            nakaKisoAmount = amount + calculateDiscount(amount, discountValue); // 値引き前の金額
+                        }
                     }
                 } else if ((matchedCategory === "消毒" && matchedKey === "カビ") || 
                            (matchedCategory === "そのほか" && matchedKey === "カビ")) {
@@ -669,6 +715,26 @@ function renderCheckTable() {
                 selectCandidates.push(candidates);
             }
         });
+
+        // 基礎セット値引きの適用（外基礎と中基礎が両方ある場合）
+        if (hasGaiKiso && hasNakaKiso) {
+            const kisoSetDiscount = 40000;
+            totalExTax -= kisoSetDiscount;
+            console.log('基礎セット値引き適用:', { 
+                gaiKisoAmount, 
+                nakaKisoAmount, 
+                discount: kisoSetDiscount, 
+                totalAfterDiscount: totalExTax 
+            });
+            
+            // 値引き表示を更新
+            if (gaiKisoPartIdx >= 0 && gaiKisoPartIdx < discounts.length) {
+                discounts[gaiKisoPartIdx] = 'セット';
+            }
+            if (nakaKisoPartIdx >= 0 && nakaKisoPartIdx < discounts.length) {
+                discounts[nakaKisoPartIdx] = 'セット';
+            }
+        }
 
         totalInTax = Math.floor(totalExTax * 1.1);
         const pasted = Number(price.toString().replace(/[^0-9.]/g, ''));
@@ -931,6 +997,12 @@ function clearAllInputs() {
 
 // 括弧による値引き表記を処理する関数
 function parseGroupDiscount(name) {
+    // 外基礎・中基礎が含まれている場合は処理をスキップ
+    if (name.includes('外基礎') || name.includes('中基礎')) {
+        console.log('外基礎・中基礎が含まれているため、グループ括弧処理をスキップ');
+        return { groupDiscount: null, productsInGroup: [], cleanedName: name };
+    }
+    
     // ネスト対応のグループ括弧検出（全角・半角対応）
     let cleanedName = name;
     let allProcessedProducts = [];
