@@ -151,13 +151,14 @@ function showNextProduct(currentProductNum, productType = 'product') {
 }
 
 // 値引き計算を行う関数
-function calculateDiscount(price, discountValue) {
+function calculateDiscount(price, discountValue, quantity = 1) {
     if (!discountValue || discountValue <= 0) return 0;
     
     if (discountValue < 100) {
         return Math.floor(price * (discountValue / 100));
     }
-    return Math.min(discountValue, price);
+    // 固定金額の場合は数量に応じて倍にする
+    return Math.min(discountValue * quantity, price);
 }
 
 function calculateProduct(productId, productType = 'product') {
@@ -229,7 +230,7 @@ function calculateProduct(productId, productType = 'product') {
                         }
                     }
 
-                    const discount = calculateDiscount(basePrice, discountValue);
+                    const discount = calculateDiscount(basePrice, discountValue, 1); // 基礎商品は数量1として扱う
                     priceExTax = basePrice - discount;
 
                     priceInTax = Math.floor(priceExTax * 1.1);
@@ -282,7 +283,7 @@ function calculateProduct(productId, productType = 'product') {
                     priceExTax = totalPrice;
                 }
 
-                const discount = calculateDiscount(priceExTax, discountValue);
+                const discount = calculateDiscount(priceExTax, discountValue, quantity);
                 priceExTax -= discount;
                 priceInTax = Math.floor(priceExTax * 1.1);
             }
@@ -362,6 +363,18 @@ function setupEventListeners(i, productType = 'product') {
 
     if (elements.list) {
         elements.list.addEventListener('change', () => {
+            // 選択された商品のdiscountValueをデフォルト値として設定
+            const selectedCategory = elements.goods.value;
+            const selectedItem = elements.list.value;
+            
+            if (selectedCategory && selectedItem) {
+                const productData = (productType === 'product' ? productsData : kisoProductsData)[selectedCategory]?.[selectedItem];
+                if (productData && productData.discountValue) {
+                    elements.discount.value = productData.discountValue;
+                    console.log(`商品 ${selectedItem} のデフォルト値引き ${productData.discountValue} を設定`);
+                }
+            }
+            
             calculateProduct(`${prefix}product${i}`, productType);
             const nextProductNum = i + 1;
             const nextProduct = document.getElementById(`${prefix}product${nextProductNum}`);
@@ -427,9 +440,15 @@ function updateSelectedProducts(productId, category, item, kisoName, priceExTax,
     const quantity = isKiso ? 1 : (parseFloat(document.getElementById('quantity' + productNum).value) || 0);
     const discount = parseFloat(document.getElementById((isKiso ? 'kiso-' : '') + 'discount_value' + productNum).value) || 0;
 
-    const discountText = discount > 0 
-        ? (discount < 100 ? `${discount}%` : `${formatNumber(discount)}円`)
-        : '0円';
+    let discountText = '0円';
+    if (discount > 0) {
+        if (discount < 100) {
+            discountText = `${discount}%`;
+        } else {
+            // 固定金額の場合は数量を掛けて表示
+            discountText = `${formatNumber(discount * quantity)}円`;
+        }
+    }
 
     const newProduct = {
         productId: productId,
