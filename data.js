@@ -107,6 +107,7 @@ const productsData = {
       "base": 0,
       "price": 165000
     }
+
   },
   "天井機器": {
     "天換260新": {
@@ -276,6 +277,46 @@ const productsData = {
     "離島3": {
       "base": 5000,
       "price": 0
+    }
+  },
+  "旧商品": {
+    "DC旧": {
+      "base": 0,
+      "price": 40000,
+      "discountValue": 3000
+    },
+    "MJ38新": {
+      "base": 0,
+      "price": 130000
+    },
+    "MJ38単品買": {
+      "base": 0,
+      "price": 130000
+    },
+    "MJ38(ｾｯﾄ)買": {
+      "base": 0,
+      "price": 100000
+    },
+    "SO旧新" :{
+      "base": 0,
+      "price": 70000
+    },
+    "SO旧単品買": {
+      "base": 0,
+      "price": 58000
+    },
+    "SO旧(ｾｯﾄ)買": {
+      "base": 0,
+      "price": 56000
+    },
+
+    "天拡旧新": {
+      "base": 0,
+      "price": 70000
+    },
+    "天拡旧買": {
+      "base": 0,
+      "price": 60000
     }
   }
 };
