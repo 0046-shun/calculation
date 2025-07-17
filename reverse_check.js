@@ -1,5 +1,42 @@
 // data.jsのデータ構造に依存します。ここでは仮にwindow.goodsDataとして商品リストがあると仮定します。
 
+// データ確認関数
+function checkDataAvailability() {
+    console.log('=== データ確認関数実行 ===');
+    console.log('window.kisoProductsData:', window.kisoProductsData);
+    if (window.kisoProductsData) {
+        console.log('利用可能なカテゴリ:', Object.keys(window.kisoProductsData));
+        if (window.kisoProductsData['新規工事']) {
+            console.log('新規工事の商品:', Object.keys(window.kisoProductsData['新規工事']));
+        }
+        if (window.kisoProductsData['クラック']) {
+            console.log('クラックの商品:', Object.keys(window.kisoProductsData['クラック']));
+        }
+        return true;
+    } else {
+        console.error('window.kisoProductsDataが読み込まれていません！');
+        return false;
+    }
+}
+
+// データ読み込み確認（DOM読み込み完了後に実行）
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== データ読み込み確認（DOMContentLoaded）===');
+    checkDataAvailability();
+});
+
+// データ読み込み確認（window.onloadでも確認）
+window.addEventListener('load', function() {
+    console.log('=== データ読み込み確認（window.onload）===');
+    checkDataAvailability();
+});
+
+// 即座にデータ確認（デバッグ用）
+setTimeout(function() {
+    console.log('=== 即座データ確認 ===');
+    checkDataAvailability();
+}, 100);
+
 // 一般管理費（管有）の金額
 const MANAGEMENT_FEE = 20000;
 // ALIAS_MAPは使わない
@@ -159,6 +196,8 @@ function saveInitialPasteData() {
 const checkBtn = document.getElementById('check-button');
 if (checkBtn) {
     checkBtn.addEventListener('click', function() {
+        // データ確認を実行
+        checkDataAvailability();
         saveInitialPasteData();
         renderCheckTable();
     });
@@ -181,16 +220,17 @@ let inputStates = {};
 let searchName = '';  // searchNameをグローバル変数として定義
 
 function calculateBasePrice(category, item, height, length) {
+    console.log('category:', category, 'item:', item, 'height:', height, 'length:', length);
     console.log(`基礎価格計算開始: カテゴリ=${category}, 商品=${item}, 高さ=${height}, 長さ/個数=${length}`);
     
     if (!window.kisoProductsData || !window.kisoProductsData[category] || !window.kisoProductsData[category][item]) {
-        console.log('基礎商品データが見つかりません');
+        console.warn('基礎商品データが見つかりません:', { category, item, availableCategories: Object.keys(window.kisoProductsData || {}) });
         return 0;
     }
 
     const productData = window.kisoProductsData[category][item];
     if (!productData["高さ別価格"] || !productData["高さ別価格"][height]) {
-        console.log('指定された高さの価格データが見つかりません');
+        console.warn('指定された高さの価格データが見つかりません:', { height, availableHeights: Object.keys(productData["高さ別価格"] || {}) });
         return 0;
     }
 
@@ -287,69 +327,25 @@ function renderCheckTable() {
 
         // 基礎セット値引きがある場合は特別な分割処理
         let nameParts;
-        if (isKisoSetDiscount) {
-            // (外基礎・中基礎)▲セット を一つの要素として扱い、他の商品と分離
-            const kisoSetPattern = /\(外基礎・中基礎\)▲セット|（外基礎・中基礎）▲セット/;
-            const kisoSetMatch = processedName.match(kisoSetPattern);
-            if (kisoSetMatch) {
-                const kisoSetPart = kisoSetMatch[0];
-                const otherParts = processedName.replace(kisoSetPattern, '').split(/[・･]/).filter(part => part.trim());
-                nameParts = [kisoSetPart, ...otherParts];
-            } else {
-                nameParts = processedName.split(/[・･]/);
+        if (isKisoSetDiscount || (processedName.includes('外基礎') && processedName.includes('中基礎'))) {
+            // 基礎セット値引きがある場合、または外基礎と中基礎が両方含まれている場合は、個別の商品として分割
+            // 管有も含める
+            const parts = ['外基礎', '中基礎'];
+            if (processedName.includes('管有')) {
+                parts.push('管有');
             }
-        } else if (hasGroupDiscount) {
-            // グループ値引きがある場合は、グループ内の商品を個別に処理
-            // ただし、グループ外の商品も含める必要がある
-            const allParts = processedName.split(/[・･]/);
-            const groupProducts = groupDiscountInfo.productsInGroup;
-            const otherProducts = allParts.filter(part => 
-                !groupProducts.some(groupProduct => part.trim() === groupProduct.trim())
-            );
-            // グループ括弧ごとの商品名（例：(SO2(DC2))）を除外
-            const filteredOtherProducts = otherProducts.filter(part => {
-                const trimmed = part.trim();
-                // (xxx・yyy) のようなグループ括弧で囲まれたものは除外
-                if (/^\(.+・.+\)$/.test(trimmed)) return false;
-                return true;
-            });
-            // namePartsは展開済み商品名＋その他の商品名
-            nameParts = [...groupProducts, ...filteredOtherProducts.filter(part => part.trim())];
-            // 展開済み商品名の値引き情報も同じ内容で格納
-            discounts = groupProducts.map(gp => {
-                // 商品名から「新」「買」「▲○％」「▲○円」「▲JA」などの修飾語部分を抽出
-                const mods = gp.match(/(新|買|▲[0-9]+(?:\.[0-9]+)?[%％]?|▲[0-9,]+円?|▲JA)+/g);
-                return mods ? mods.join('') : '';
-            });
-            // その他の商品名の値引き情報も追加
-            discounts = [...discounts, ...filteredOtherProducts.map(() => '')];
-            console.log('グループ値引き商品分割:', { groupProducts, filteredOtherProducts, nameParts, discounts });
-        } else {
-            nameParts = processedName.split(/[・･]/);
-        }
-
-        // ★ここから外基礎・中基礎＋▲セット/セットの正規化処理（全partに適用）
-        nameParts = nameParts.map(part => {
-            if (part.match(/外基礎|中基礎/)) {
-                return part.replace(/[\(\)（）]/g, '')
-                           .replace(/▲セット|▲ｾｯﾄ|セット|ｾｯﾄ/g, '')
-                           .trim();
-            }
-            return part;
-        });
-
-        // ★ここから外基礎・中基礎＋▲セット/セットの特別処理
-        let isKisoSetLine = false;
-        if (nameParts.length === 1 && (nameParts[0].includes('外基礎') || nameParts[0].includes('中基礎')) && (nameParts[0].includes('▲セット') || nameParts[0].includes('セット'))) {
-            // 1行で括弧付きや▲セット付きの場合
-            nameParts = nameParts[0]
-                .replace(/[\(（]?外基礎[\)）]?/g, '外基礎')
-                .replace(/[\(（]?中基礎[\)）]?/g, '中基礎')
-                .replace(/▲セット|セット/g, '')
-                .split(/[・･]/)
-                .map(part => part.trim())
-                .filter(Boolean);
+            nameParts = parts;
             isKisoSetLine = true;
+            
+            // 明示的なセット表記がない場合でも、両方含まれていればセット値引きを適用
+            if (!isKisoSetDiscount && (processedName.includes('外基礎') && processedName.includes('中基礎'))) {
+                isKisoSetDiscount = true;
+                kisoSetDiscountAmount = 40000;
+                console.log('外基礎・中基礎両方検出により基礎セット値引きを適用:', kisoSetDiscountAmount);
+            }
+        } else {
+            // 通常の商品名分割処理
+            nameParts = processedName.split(/[・･]/);
         }
 
         // 数量の区切りを「/」「・」「･」すべて対応
@@ -418,11 +414,11 @@ function renderCheckTable() {
             
             // ★値引欄の特別処理
             let discountLabel = '';
-            if (part === '外基礎' || part === '中基礎') {
+            // 基礎セット値引きがある場合の表示
+            if (isKisoSetDiscount && (part === '外基礎' || part === '中基礎')) {
                 discountLabel = 'セット';
-            } else if (isKisoSetLine && (part === '外基礎' || part === '中基礎')) {
-                discountLabel = 'セット';
-            } else if (searchName.includes('(外基礎・中基礎)▲セット') || searchName.includes('（外基礎・中基礎）▲セット')) {
+            } else if (searchName.includes('(外基礎・中基礎)▲セット') || searchName.includes('（外基礎・中基礎）▲セット') || 
+                (name.includes('▲セット') && (part === '外基礎' || part === '中基礎'))) {
                 discountLabel = 'セット';
             } else if (hasGroupDiscount && groupDiscountInfo.productsInGroup.includes(trimmed)) {
                 if (groupDiscountInfo.groupDiscount.type === 'percent') {
@@ -483,23 +479,23 @@ function renderCheckTable() {
                 selectCandidates.push([]);
                 
                 console.log('基礎セット処理完了:', { totalAmount: kisoTotalAmount, discount: kisoSetDiscountAmount });
-                return;
+                // ここでreturnしないで、通常の処理を続行
             }
 
             // 基礎商品判定
             let isKiso = false;
             let kisoCategory = '';
             let kisoCandidates = [];
-            if (nameForSearch.match(/基礎|クラック/)) {
+            // クラック系（外クラ・中片クラ・中両クラ含む）も同じロジックで判定
+            if (nameForSearch.match(/基礎|クラック|外クラ|中片クラ|中両クラ/)) {
                 isKiso = true;
-                if (nameForSearch.includes('クラック')) {
+                if (nameForSearch.includes('クラック') || nameForSearch.includes('外クラ') || nameForSearch.includes('中片クラ') || nameForSearch.includes('中両クラ')) {
                     kisoCategory = 'クラック';
                 } else {
                     kisoCategory = nameForSearch.includes('追') ? '追加工事' : '新規工事';
                 }
                 kisoCandidates = getKisoCandidates(kisoCategory);
                 console.log('基礎商品判定:', { isKiso, kisoCategory, candidates: kisoCandidates });
-                
                 // 外基礎・中基礎の判定と記録
                 if (kisoCategory === '新規工事') {
                     if (nameForSearch.includes('外基礎')) {
@@ -516,23 +512,63 @@ function renderCheckTable() {
             let thisQty = 0;
             let kisoHeight = 0, kisoLength = 0;
             let kisoQtyRaw = qtyParts[partIdx] !== undefined ? qtyParts[partIdx] : qtyParts[0];
-            if (isKiso && kisoQtyRaw && kisoQtyRaw.includes('*')) {
-                const kisoQ = parseKisoQuantity(kisoQtyRaw);
-                kisoHeight = kisoQ.height;
-                kisoLength = kisoQ.length;
-                
-                if (kisoCategory === 'クラック') {
-                    // クラック系の場合：高さ*個数 → 個数を数量として使用
-                    thisQty = kisoLength;
-                    console.log('クラック数量:', { height: kisoHeight, count: kisoLength, qty: thisQty });
+            if (isKiso) {
+                if (kisoQtyRaw && kisoQtyRaw.includes('*')) {
+                    // 30*20 のような場合
+                    const kisoQ = parseKisoQuantity(kisoQtyRaw);
+                    kisoHeight = kisoQ.height;
+                    kisoLength = kisoQ.length;
+                    
+                    if (kisoCategory === 'クラック') {
+                        // クラック系の場合：高さ*個数 → 個数を数量として使用
+                        thisQty = kisoLength;
+                        console.log('クラック数量（高さ*個数）:', { height: kisoHeight, count: kisoLength, qty: thisQty });
+                    } else {
+                        // 基礎工事の場合：高さ*長さ → 長さを数量として使用
+                        thisQty = kisoLength;
+                        console.log('基礎工事数量（高さ*長さ）:', { height: kisoHeight, length: kisoLength, qty: thisQty });
+                    }
                 } else {
-                    // 基礎工事の場合：高さ*長さ → 長さを数量として使用
-                    thisQty = kisoLength;
-                    console.log('基礎工事数量:', { height: kisoHeight, length: kisoLength, qty: thisQty });
+                    // 単純な数値の場合（例：1）
+                    thisQty = parseQuantity(kisoQtyRaw);
+                    
+                    if (kisoCategory === 'クラック') {
+                        // クラック系の場合：基礎とセットの場合、その基礎の高さを使用
+                        // 同じ行の外基礎・中基礎から高さを取得
+                        const kisoHeightFromLine = qtyParts.find(qty => qty && qty.includes('*'));
+                        if (kisoHeightFromLine) {
+                            const kisoQ = parseKisoQuantity(kisoHeightFromLine);
+                            kisoHeight = kisoQ.height;
+                            kisoLength = thisQty; // 個数
+                        } else {
+                            kisoHeight = 30; // デフォルト高さ
+                            kisoLength = thisQty;
+                        }
+                        console.log('クラック数量（個数のみ）:', { height: kisoHeight, count: kisoLength, qty: thisQty });
+                    } else {
+                        // 基礎工事の場合：通常の処理
+                        kisoHeight = 30; // デフォルト高さ
+                        kisoLength = thisQty;
+                        console.log('基礎工事数量（個数のみ）:', { height: kisoHeight, length: kisoLength, qty: thisQty });
+                    }
                 }
             } else {
                 thisQty = parseQuantity(kisoQtyRaw);
                 console.log('通常数量:', thisQty);
+                
+                // 外クラックの場合、同じ行の基礎高さを使用
+                if (kisoCategory === 'クラック') {
+                    const kisoHeightFromLine = qtyParts.find(qty => qty && qty.includes('*'));
+                    if (kisoHeightFromLine) {
+                        const kisoQ = parseKisoQuantity(kisoHeightFromLine);
+                        kisoHeight = kisoQ.height;
+                        kisoLength = thisQty; // 個数
+                    } else {
+                        kisoHeight = 30; // デフォルト高さ
+                        kisoLength = thisQty;
+                    }
+                    console.log('外クラック数量修正:', { height: kisoHeight, count: kisoLength, qty: thisQty });
+                }
             }
 
             if (nameForSearch.includes('管有')) {
@@ -579,11 +615,31 @@ function renderCheckTable() {
                 // 「外基礎追」→「外基礎」、「外基礎」→「外基礎」のように商品名を特定
                 let cleanItemName = nameForSearch.replace('追', '');
                 
+                console.log('基礎商品検索:', { 
+                    category: kisoCategory, 
+                    item: cleanItemName, 
+                    availableItems: Object.keys(kisoCatData),
+                    kisoData: kisoData
+                });
+                
+                // デバッグ: クラック商品の詳細確認
+                if (kisoCategory === 'クラック') {
+                    console.log('クラック商品詳細確認:', {
+                        searchName: nameForSearch,
+                        cleanItemName: cleanItemName,
+                        availableItems: Object.keys(kisoCatData),
+                        hasItem: kisoCatData.hasOwnProperty(cleanItemName),
+                        exactMatch: kisoCatData[cleanItemName]
+                    });
+                }
+                
                 if (kisoCatData[cleanItemName]) {
                     matched = kisoCatData[cleanItemName];
                     matchedKey = cleanItemName;
                     matchedCategory = kisoCategory;
                     console.log('基礎商品一致:', { key: matchedKey, category: matchedCategory });
+                } else {
+                    console.warn('基礎商品が見つかりません:', { category: kisoCategory, item: cleanItemName });
                 }
             } else {
                 // 通常商品の完全一致検索
@@ -640,35 +696,41 @@ function renderCheckTable() {
                     if (kisoCategory === 'クラック') {
                         // クラック系の計算：高さ*個数で計算
                         amount = calculateBasePrice('クラック', matchedKey, kisoHeight, kisoLength);
-                        amount -= calculateDiscount(amount, discountValue);
+                        // 基礎セット値引きの場合は個別値引きを適用しない
+                        if (!isKisoSetDiscount) {
+                            amount -= calculateDiscount(amount, discountValue);
+                        }
                         console.log('クラック計算結果:', { 
                             category: 'クラック', 
                             item: matchedKey, 
                             height: kisoHeight, 
                             count: kisoLength, 
-                            baseAmount: amount + calculateDiscount(amount, discountValue), 
-                            discount: calculateDiscount(amount, discountValue), 
+                            baseAmount: amount + (isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue)), 
+                            discount: isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue), 
                             finalAmount: amount 
                         });
                     } else {
                         // 基礎商品の計算（kisoHeight, kisoLengthが定義済み）
                         amount = calculateBasePrice(matchedCategory, matchedKey, kisoHeight, kisoLength);
-                        amount -= calculateDiscount(amount, discountValue);
+                        // 基礎セット値引きの場合は個別値引きを適用しない
+                        if (!isKisoSetDiscount) {
+                            amount -= calculateDiscount(amount, discountValue);
+                        }
                         console.log('基礎商品計算結果:', { 
                             category: matchedCategory, 
                             item: matchedKey, 
                             height: kisoHeight, 
                             length: kisoLength, 
-                            baseAmount: amount + calculateDiscount(amount, discountValue), 
-                            discount: calculateDiscount(amount, discountValue), 
+                            baseAmount: amount + (isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue)), 
+                            discount: isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue), 
                             finalAmount: amount 
                         });
                         
                         // 外基礎・中基礎の金額を記録（基礎セット値引き用）
                         if (matchedKey.includes('外基礎')) {
-                            gaiKisoAmount = amount + calculateDiscount(amount, discountValue); // 値引き前の金額
+                            gaiKisoAmount = amount; // 値引き前の金額
                         } else if (matchedKey.includes('中基礎')) {
-                            nakaKisoAmount = amount + calculateDiscount(amount, discountValue); // 値引き前の金額
+                            nakaKisoAmount = amount; // 値引き前の金額
                         }
                     }
                 } else if ((matchedCategory === "消毒" && matchedKey === "カビ") || 
@@ -717,7 +779,8 @@ function renderCheckTable() {
         });
 
         // 基礎セット値引きの適用（外基礎と中基礎が両方ある場合）
-        if (hasGaiKiso && hasNakaKiso) {
+        // ただし、明示的に「▲セット」表記がある場合のみ適用
+        if (isKisoSetDiscount) {
             const kisoSetDiscount = 40000;
             totalExTax -= kisoSetDiscount;
             console.log('基礎セット値引き適用:', { 
@@ -727,13 +790,7 @@ function renderCheckTable() {
                 totalAfterDiscount: totalExTax 
             });
             
-            // 値引き表示を更新
-            if (gaiKisoPartIdx >= 0 && gaiKisoPartIdx < discounts.length) {
-                discounts[gaiKisoPartIdx] = 'セット';
-            }
-            if (nakaKisoPartIdx >= 0 && nakaKisoPartIdx < discounts.length) {
-                discounts[nakaKisoPartIdx] = 'セット';
-            }
+            // 値引き表示を更新（既に各商品で設定済み）
         }
 
         totalInTax = Math.floor(totalExTax * 1.1);
@@ -917,12 +974,15 @@ function findPartialMatches(searchName) {
 
 function normalizeProductName(name) {
     if (!name) return '';
-    // 略称を正規化
+    // 略称・表記ゆれを正規化
     return name
         .replace(/[・\u30fb,、\s]/g, '')
-        .replace(/外クラ|外ｸﾗ|外クラック/g, '外クラック')
-        .replace(/中両クラ|中両ｸﾗ|中両面クラック/g, '中両面クラック')
-        .replace(/中片クラ|中片ｸﾗ|中片面クラック/g, '中片面クラック')
+        // クラの表記ゆれをすべて「クラ」に統一
+        .replace(/(外|中片|中両)[ｸｸ][ﾗﾗ]|(外|中片|中両)[Kk][Uu][Rr][Aa]|(外|中片|中両)KURA/g, '$1クラ')
+        .replace(/外クラ|外ｸﾗ|外KURA|外kura/g, '外クラ')
+        .replace(/中両クラ|中両ｸﾗ|中両KURA|中両kura/g, '中両クラ')
+        .replace(/中片クラ|中片ｸﾗ|中片KURA|中片kura/g, '中片クラ')
+        .replace(/クラ|ｸﾗ|KURA|kura/g, 'クラ')
         .replace(/外基礎/g, '外基礎')
         .replace(/中基礎/g, '中基礎')
         .toLowerCase();

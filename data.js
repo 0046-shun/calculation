@@ -279,6 +279,57 @@ const productsData = {
       "price": 0
     }
   },
+
+  "害虫": {
+    "ゴキブリ": {
+      "base": 20000,
+      "price": 500,
+      "areaThreshold": 20
+    },
+    "ムカデ": {
+      "base": 20000,
+      "price": 500,
+      "areaThreshold": 40
+    },
+    "アリ": {
+      "base": 25000,
+      "price": 500,
+      "areaThreshold": 40
+    },
+    "クモ・ヤスデ": {
+      "base": 20000,
+      "price": 500,
+      "areaThreshold": 40
+    },
+    "樹木害虫": {
+      "base": 20000,
+      "price": 10000,
+      "areaThreshold": 1
+    },
+    "スズメバチ(屋外)": {
+      "base": 40000,
+      "price": 30000,
+      "areaThreshold": 1
+    },
+    "スズメバチ(屋内)": {
+      "base": 50000,
+      "price": 35000,
+      "areaThreshold": 1
+    },
+    "ｱｼﾅｶﾞﾊﾞﾁ・ﾐﾂﾊﾞﾁ(屋外)": {
+      "base": 25000,
+      "price": 20000,
+      "areaThreshold": 1
+    },
+    "ｱｼﾅｶﾞﾊﾞﾁ・ﾐﾂﾊﾞﾁ(屋内)": {
+      "base": 35000,
+      "price": 25000,
+      "areaThreshold": 1
+    }
+
+  },
+
+
   "旧商品": {
     "DC旧": {
       "base": 0,
@@ -321,7 +372,7 @@ const productsData = {
   }
 };
 
-const kisoProductsData = {
+window.kisoProductsData = {
   "新規工事": {
     "外基礎": {
       "高さ別価格": {
@@ -534,4 +585,3 @@ const kisoProductsData = {
 };
 
 window.goodsData = productsData;
-window.kisoProductsData = kisoProductsData;  // kisoProductsDataをグローバルに公開
