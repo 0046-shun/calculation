@@ -741,10 +741,24 @@ function renderCheckTable() {
                     amount = calculateBMPrice(thisQty, selectedProducts);
                     amount -= calculateDiscount(amount, discountValue);
                 } else if (matchedCategory === "床下機器" && matchedKey === "SO2買") {
-                    // 他の選択商品をチェック
-                    const hasSpecialDiscount = selectedProducts.some(product => 
-                        product.item && (product.item.includes("DC2") || product.item.includes("60"))
+                    // 同じ行内の他の商品名をチェック（DC2またはMJ60のどちらかが商品群にある場合）
+                    const hasDC2 = nameParts.some(part => 
+                        part.trim() && part.trim().includes("DC2")
                     );
+                    const hasMJ60 = nameParts.some(part => 
+                        part.trim() && part.trim().includes("MJ60")
+                    );
+                    
+                    // DC2またはMJ60のどちらかが商品群にある場合は特別割引価格を適用
+                    const hasSpecialDiscount = hasDC2 || hasMJ60;
+                    console.log('SO2買の価格判定:', { 
+                        hasDC2, 
+                        hasMJ60, 
+                        hasSpecialDiscount, 
+                        normalPrice: matched.price, 
+                        discountPrice: 83000,
+                        nameParts: nameParts
+                    });
 
                     // 特別割引価格または通常価格を適用
                     const unitPrice = hasSpecialDiscount ? 83000 : matched.price;
