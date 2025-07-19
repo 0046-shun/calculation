@@ -270,7 +270,11 @@ const productsData = {
       "base": 30000,
       "price": 0
     },
-    "離島1・2": {
+    "離島1": {
+      "base": 20000,
+      "price": 0
+    },
+    "離島2": {
       "base": 20000,
       "price": 0
     },
