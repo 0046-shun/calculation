@@ -1071,9 +1071,10 @@ function clearAllInputs() {
 
 // 括弧による値引き表記を処理する関数
 function parseGroupDiscount(name) {
-    // 外基礎・中基礎が含まれている場合は処理をスキップ
-    if (name.includes('外基礎') || name.includes('中基礎')) {
-        console.log('外基礎・中基礎が含まれているため、グループ括弧処理をスキップ');
+    // 明示的な基礎セット「(外基礎・中基礎)▲セット」のみスキップし、それ以外（外基礎＋クラック等）は展開対象
+    const isExplicitKisoSet = (name.includes('外基礎') && name.includes('中基礎') && /▲\s*セット/.test(name));
+    if (isExplicitKisoSet) {
+        console.log('外基礎・中基礎▲セット検出のため、グループ括弧処理をスキップ');
         return { groupDiscount: null, productsInGroup: [], cleanedName: name };
     }
     

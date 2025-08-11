@@ -213,6 +213,12 @@ const productsData = {
         "base": 112000,
         "price": 12000,
         "areaThreshold": 1
+    },
+    "人通口開口": {
+      "price": 50000,
+    },
+    "人通口拡張": {
+      "price": 50000,
     }
   },
   "そのほか": {
@@ -265,6 +271,9 @@ const productsData = {
       "base": 40000,
       "price": 5000,
       "areaThreshold": 8
+    },
+    "火災報知器": {
+      "price": 8000,
     },
     "島特1": {
       "base": 30000,
