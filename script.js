@@ -157,8 +157,8 @@ function calculateDiscount(price, discountValue, quantity = 1) {
     if (discountValue < 100) {
         return Math.floor(price * (discountValue / 100));
     }
-    // 固定金額の場合は数量に応じて倍にする
-    return Math.min(discountValue * quantity, price);
+    // 固定金額の場合は商品1つあたりの固定金額を引く（数量は関係ない）
+    return Math.min(discountValue, price);
 }
 
 function calculateProduct(productId, productType = 'product') {
@@ -232,7 +232,6 @@ function calculateProduct(productId, productType = 'product') {
 
                     const discount = calculateDiscount(basePrice, discountValue, 1); // 基礎商品は数量1として扱う
                     priceExTax = basePrice - discount;
-
                     priceInTax = Math.floor(priceExTax * 1.1);
                     kisoName = category === "クラック" 
                         ? `${item} ${height}cm ${length}個`
@@ -727,13 +726,14 @@ function updateSummary() {
     // 基礎セット値引きを適用
     if (checkKisoSetDiscount(selectedProducts)) {
         finalTotalExTax -= 40000;
-        finalTotalInTax -= 40000;
     }
     
     if (document.getElementById('management-fee-switch').checked) {
         finalTotalExTax += 20000;
-        finalTotalInTax += 22000;
     }
+    
+    // 税込み金額を正しく計算（税抜き金額 × 1.1）
+    finalTotalInTax = Math.round(finalTotalExTax * 1.1);
     
     if (totalExTaxElement) totalExTaxElement.textContent = formatNumber(finalTotalExTax);
     if (totalInTaxElement) totalInTaxElement.textContent = formatNumber(finalTotalInTax);
