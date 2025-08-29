@@ -290,6 +290,9 @@ const productsData = {
     "離島3": {
       "base": 5000,
       "price": 0
+    },
+    "保証書": {
+      "price": 5000
     }
   },
 
