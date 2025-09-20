@@ -1,84 +1,42 @@
 // グローバル変数と基本的なユーティリティ関数
+// モジュールインポートは使用しない（UNC/ローカル環境互換のため）
 let selectedProducts = [];
 
-// 金額を3桁区切りにする関数
+// 金額を3桁区切りにする関数（共通ユーティリティへ委譲）
 function formatNumber(num) {
-    if (Number.isInteger(num)) {
-        return num.toLocaleString();
-    } else {
-        return num.toLocaleString(undefined, { 
-            minimumFractionDigits: 1, 
-            maximumFractionDigits: 1 
-        });
+    if (window.CoreUtils && typeof window.CoreUtils.formatNumber === 'function') {
+        return window.CoreUtils.formatNumber(num);
     }
+    if (Number.isInteger(num)) return num.toLocaleString();
+    return num.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
 // カビの価格を計算する関数
 function calculateKabiPrice(quantity, selectedProducts) {
-    // 常に「そのほか」カテゴリのカビデータを使用（割引条件が設定されているため）
-    const kabiData = productsData["そのほか"]["カビ"];
-    let appliedPrice = kabiData.price; // 基本価格: 2500円
-
-    console.log('=== カビ価格計算開始 ===');
-    console.log('選択商品一覧:', selectedProducts);
-    console.log('数量:', quantity);
-    console.log('カビデータ:', kabiData);
-
-    // 第1条件: 消毒カテゴリがあれば1000円
-    const hasDisinfection = selectedProducts.some(product => 
-        product.category === "消毒"
-    );
-    
-    console.log('消毒カテゴリ判定:', hasDisinfection);
-    
-    if (hasDisinfection) {
-        appliedPrice = kabiData.discountPrice; // 1000円
-        console.log('消毒割引適用: 1000円');
-        return appliedPrice * quantity;
+    if (window.CorePricing && window.goodsData) {
+        return window.CorePricing.calculateKabiPrice(Number(quantity) || 0, selectedProducts, window.goodsData);
     }
-
-    // 第2条件: 基礎カテゴリまたはDC2/60を含む商品があれば1700円
-    const hasDiscount2Condition = selectedProducts.some(product => {
-        // 基礎カテゴリをチェック（新規工事または追加工事で基礎商品）
-        if ((product.category === "新規工事" || product.category === "追加工事") && 
-            (product.item && (product.item.includes("基礎") || product.item.includes("クラック")))) {
-            console.log('基礎商品発見:', product);
-            return true;
-        }
-        
-        // DC2または60を含む商品をチェック
-        if (product.item && (product.item.includes("DC2") || product.item.includes("60"))) {
-            console.log('DC2/60商品発見:', product);
-            return true;
-        }
-        
-        return false;
-    });
-    
-    console.log('第2条件判定:', hasDiscount2Condition);
-    
-    if (hasDiscount2Condition) {
-        appliedPrice = kabiData.discount2Price; // 1700円
-        console.log('第2条件割引適用: 1700円');
-    } else {
-        console.log('基本価格適用: 2500円');
-    }
-
-    const finalPrice = appliedPrice * quantity;
-    console.log('最終価格:', finalPrice);
-    console.log('=== カビ価格計算終了 ===');
-
-    return finalPrice;
+    // フォールバック（理論上到達しない想定）
+    const data = window.goodsData && window.goodsData["そのほか"] && window.goodsData["そのほか"]["カビ"]; 
+    if (!data) return 0; 
+    let unit = data.price; 
+    const hasDisinfection = selectedProducts.some(p => p.category === "消毒"); 
+    if (hasDisinfection) return (data.discountPrice || 1000) * (Number(quantity)||0); 
+    const hasDiscount2 = selectedProducts.some(p => (p.category === "新規工事" || p.category === "追加工事") && p.item && (p.item.includes("基礎") || p.item.includes("クラック")) || (p.item && (p.item.includes("DC2") || p.item.includes("60")))); 
+    if (hasDiscount2) unit = (data.discount2Price || 1700); 
+    return unit * (Number(quantity)||0);
 }
 
 
 // 基礎セット値引きをチェックする関数
 function checkKisoSetDiscount(selectedProducts) {
+    if (window.CorePricing) {
+        return window.CorePricing.checkKisoSetDiscount(selectedProducts);
+    }
     const hasGaiKiso = selectedProducts.some(p => 
         p.category === "新規工事" && p.item.includes("外基礎"));
     const hasNakaKiso = selectedProducts.some(p => 
         p.category === "新規工事" && p.item.includes("中基礎"));
-    
     return hasGaiKiso && hasNakaKiso;
 }
 
@@ -153,7 +111,6 @@ function showNextProduct(currentProductNum, productType = 'product') {
 // 値引き計算を行う関数
 function calculateDiscount(price, discountValue, quantity = 1) {
     if (!discountValue || discountValue <= 0) return 0;
-    
     if (discountValue < 100) {
         return Math.floor(price * (discountValue / 100));
     }
@@ -211,32 +168,34 @@ function calculateProduct(productId, productType = 'product') {
             const length = parseFloat(lengthElement.value) || 0;
             const discountValue = parseFloat(discountElement.value) || 0;
 
-            if (category && item && kisoProductsData[category] && kisoProductsData[category][item]) {
-                const productData = kisoProductsData[category][item];
-                if (productData && productData["高さ別価格"] && productData["高さ別価格"][height]) {
-                    const heightData = productData["高さ別価格"][height];
-                    let basePrice = heightData["基本価格"];
-                    let lengthPrice = heightData["長さ加算"];
-
-                    if (category === "クラック") {
-                        // クラックの場合は長さを数量として扱う
-                        basePrice = lengthPrice * length;
-                    } else {
-                        // 通常の基礎商品の場合
-                        const basicLength = productData["基本長さ"] || 20;
-                        if (length > basicLength) {
-                            const extraLength = length - basicLength;
-                            basePrice += extraLength * lengthPrice;
+            if (category && item && window.kisoProductsData[category] && window.kisoProductsData[category][item]) {
+                if (window.CorePricing) {
+                    const result = window.CorePricing.calculateKisoPrice(category, item, height, length, discountValue, window.kisoProductsData);
+                    priceExTax = result.ex;
+                    priceInTax = result.inTax;
+                } else {
+                    const productData = window.kisoProductsData[category][item];
+                    if (productData && productData["高さ別価格"] && productData["高さ別価格"][height]) {
+                        const heightData = productData["高さ別価格"][height];
+                        let basePrice = heightData["基本価格"];
+                        let lengthPrice = heightData["長さ加算"];
+                        if (category === "クラック") {
+                            basePrice = lengthPrice * length;
+                        } else {
+                            const basicLength = productData["基本長さ"] || 20;
+                            if (length > basicLength) {
+                                const extraLength = length - basicLength;
+                                basePrice += extraLength * lengthPrice;
+                            }
                         }
+                        const discount = calculateDiscount(basePrice, discountValue, 1);
+                        priceExTax = basePrice - discount;
+                        priceInTax = Math.floor(priceExTax * 1.1);
                     }
-
-                    const discount = calculateDiscount(basePrice, discountValue, 1); // 基礎商品は数量1として扱う
-                    priceExTax = basePrice - discount;
-                    priceInTax = Math.floor(priceExTax * 1.1);
-                    kisoName = category === "クラック" 
-                        ? `${item} ${height}cm ${length}個`
-                        : `${item} ${height}cm ${length}m`;
                 }
+                kisoName = category === "クラック" 
+                    ? `${item} ${height}cm ${length}個`
+                    : `${item} ${height}cm ${length}m`;
             }
         } else {
             const quantityElement = document.getElementById('quantity' + productNum);
@@ -247,44 +206,52 @@ function calculateProduct(productId, productType = 'product') {
                 return;
             }
 
-            if (category && item && productsData[category] && productsData[category][item]) {
-                const productData = productsData[category][item];
+            if (category && item && window.goodsData[category] && window.goodsData[category][item]) {
+                const productData = window.goodsData[category][item];
                 const quantity = parseFloat(quantityElement.value) || 0;
                 const discountValue = parseFloat(discountElement.value) || 0;
 
-                if ((category === "そのほか" && item === "カビ") || 
-                    (category === "消毒" && item === "カビ")) {
-                    // 現在の商品も含めて判定する
-                    const currentProduct = { category, item, quantity };
-                    const allProducts = [...selectedProducts, currentProduct];
-                    priceExTax = calculateKabiPrice(quantity, allProducts);
-                } else if (category === "そのほか" && item === "BM") {
-                    priceExTax = calculateBMPrice(quantity, selectedProducts);
-                } else if (category === "床下機器" && item === "SO2買") {
-                    // 他の選択商品をチェック
-                    const hasSpecialDiscount = selectedProducts.some(product => 
-                        product.item && (product.item.includes("DC2") || product.item.includes("60"))
-                    );
-
-                    // 特別割引価格または通常価格を適用
-                    const unitPrice = hasSpecialDiscount ? 83000 : productData.price;
-                    priceExTax = unitPrice * quantity;
+                if (window.CorePricing) {
+                    const result = window.CorePricing.calculateProductLine({
+                        type: 'product',
+                        category,
+                        item,
+                        quantity,
+                        discountValue,
+                        productsData: window.goodsData,
+                        selectedProductsContext: [...selectedProducts, { category, item, quantity }]
+                    });
+                    priceExTax = result.ex;
+                    priceInTax = result.inTax;
                 } else {
-                    let totalPrice = productData.base || 0;
-
-                    if (productData.areaThreshold) {
-                        if (quantity > productData.areaThreshold) {
-                            totalPrice += productData.price * (quantity - productData.areaThreshold);
-                        }
+                    if ((category === "そのほか" && item === "カビ") || 
+                        (category === "消毒" && item === "カビ")) {
+                        const currentProduct = { category, item, quantity };
+                        const allProducts = [...selectedProducts, currentProduct];
+                        priceExTax = calculateKabiPrice(quantity, allProducts);
+                    } else if (category === "そのほか" && item === "BM") {
+                        priceExTax = calculateBMPrice(quantity, selectedProducts);
+                    } else if (category === "床下機器" && item === "SO2買") {
+                        const hasSpecialDiscount = selectedProducts.some(product => 
+                            product.item && (product.item.includes("DC2") || product.item.includes("60"))
+                        );
+                        const unitPrice = hasSpecialDiscount ? 83000 : productData.price;
+                        priceExTax = unitPrice * quantity;
                     } else {
-                        totalPrice += productData.price * quantity;
+                        let totalPrice = productData.base || 0;
+                        if (productData.areaThreshold) {
+                            if (quantity > productData.areaThreshold) {
+                                totalPrice += productData.price * (quantity - productData.areaThreshold);
+                            }
+                        } else {
+                            totalPrice += productData.price * quantity;
+                        }
+                        priceExTax = totalPrice;
                     }
-                    priceExTax = totalPrice;
+                    const discount = calculateDiscount(priceExTax, discountValue, quantity);
+                    priceExTax -= discount;
+                    priceInTax = Math.floor(priceExTax * 1.1);
                 }
-
-                const discount = calculateDiscount(priceExTax, discountValue, quantity);
-                priceExTax -= discount;
-                priceInTax = Math.floor(priceExTax * 1.1);
             }
         }
 
@@ -343,7 +310,7 @@ function setupEventListeners(i, productType = 'product') {
         quantity: document.getElementById(`quantity${i}`)
     };
 
-    let productsDataToUse = (productType === 'product') ? productsData : kisoProductsData;
+    let productsDataToUse = (productType === 'product') ? window.goodsData : window.kisoProductsData;
     if (elements.goods) {
         populateCategories(productsDataToUse, `${prefix}goods${i}`);
         elements.goods.addEventListener('change', () => {
@@ -367,7 +334,7 @@ function setupEventListeners(i, productType = 'product') {
             const selectedItem = elements.list.value;
             
             if (selectedCategory && selectedItem) {
-                const productData = (productType === 'product' ? productsData : kisoProductsData)[selectedCategory]?.[selectedItem];
+                const productData = (productType === 'product' ? window.goodsData : window.kisoProductsData)[selectedCategory]?.[selectedItem];
                 if (productData && productData.discountValue) {
                     elements.discount.value = productData.discountValue;
                     console.log(`商品 ${selectedItem} のデフォルト値引き ${productData.discountValue} を設定`);
@@ -395,7 +362,7 @@ function setupEventListeners(i, productType = 'product') {
                     if (selectedCategory) {
                         // 小項目の選択肢を更新
                         updateSubCategory(
-                            productType === 'product' ? productsData : kisoProductsData,
+                            productType === 'product' ? window.goodsData : window.kisoProductsData,
                             `${prefix}goods${nextProductNum}`,
                             `${prefix}list${nextProductNum}`
                         );
@@ -1045,35 +1012,17 @@ for (let i = 1; i <= 4; i++) {
 
 // BMの価格を計算する関数
 function calculateBMPrice(quantity, selectedProducts) {
-    const bmData = productsData["そのほか"]["BM"];
-    let appliedPrice = bmData.price; // 基本価格 3,300円
-
-    // 既存の割引条件チェック
-    const hasExistingDiscount = selectedProducts.some(product => {
-        // カテゴリによる判定
-        if (bmData.discountConditions.some(condition => 
-            condition.type === "category" && condition.value === product.category)) {
-            return true;
-        }
-        // 商品名による判定
-        if (bmData.discountConditions.some(condition => 
-            condition.type === "item" && condition.value === product.item)) {
-            return true;
-        }
-        return false;
-    });
-
-    // 基礎工事との同時選択チェック（新規追加の条件）
-    const hasKiso = selectedProducts.some(product => 
-        (product.item && (product.item.includes("外基礎") || product.item.includes("中基礎")))
-    );
-
-    // いずれかの条件に該当する場合、割引価格を適用
-    if (hasExistingDiscount || hasKiso) {
-        appliedPrice = bmData.discountPrice; // 割引価格 2,800円
+    if (window.CorePricing && window.goodsData) {
+        return window.CorePricing.calculateBMPrice(Number(quantity) || 0, selectedProducts, window.goodsData);
     }
-
-    return appliedPrice * quantity;
+    // フォールバック
+    const bmData = window.goodsData && window.goodsData["そのほか"] && window.goodsData["そのほか"]["BM"]; 
+    if (!bmData) return 0; 
+    let unit = bmData.price; 
+    const hasExistingDiscount = (selectedProducts||[]).some(p => bmData.discountConditions && (bmData.discountConditions.some(c => c.type === 'category' && c.value === p.category) || bmData.discountConditions.some(c => c.type === 'item' && c.value === p.item))); 
+    const hasKiso = (selectedProducts||[]).some(p => p.item && (p.item.includes('外基礎') || p.item.includes('中基礎'))); 
+    if (hasExistingDiscount || hasKiso) unit = bmData.discountPrice || unit; 
+    return unit * (Number(quantity)||0);
 }
 
 

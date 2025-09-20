@@ -443,6 +443,30 @@
     </main>
 
     <script src="./data.js"></script>
+    <script src="./core_data.js"></script>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script>
+      window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {};
+    </script>
+    <script src="./firebase-config.js"></script>
+    <script src="./core_data_fetch.js"></script>
+    <script>
+      window.FEATURE_USE_FIRESTORE = true; // use Firestore
+      if (window.CoreDataFetch) {
+        CoreDataFetch.loadData().then(function(){
+          // data loaded; nothing else to do because script.js reads window.goodsData
+        });
+      }
+    </script>
+    <script>
+      // 正規化キャッシュを初期化（検索/一致判定用）
+      window.normalizedGoods = (window.CoreData && window.CoreData.normalizeGoods) ? window.CoreData.normalizeGoods(window.goodsData) : {};
+      window.normalizedKiso = (window.CoreData && window.CoreData.normalizeKiso) ? window.CoreData.normalizeKiso(window.kisoProductsData) : {};
+    </script>
+    <script src="./core_pricing.js"></script>
+    <script src="./core_utils.js"></script>
     <script src="./script.js"></script>
 </body>
 </html>

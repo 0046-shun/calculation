@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Schema Preview</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        .issues { color: #d32f2f; }
+        .ok { color: #2e7d32; }
+    </style>
+    <script src="./core_utils.js"></script>
+    <script src="./data.js"></script>
+    <script src="./core_data.js"></script>
+</head>
+<body>
+    <h1>Schema Preview</h1>
+    <div id="status"></div>
+    <h2>Goods Schema</h2>
+    <button id="dl-goods">Download goods.json</button>
+    <pre id="goods"></pre>
+    <h2>Kiso Schema</h2>
+    <button id="dl-kiso">Download kiso.json</button>
+    <pre id="kiso"></pre>
+    <h2>Combined (products.json)</h2>
+    <button id="dl-all">Download products.json</button>
+    <script>
+        (function(){
+            const goodsIssues = (window.CoreData && CoreData.validateGoodsData(window.goodsData)) || [];
+            const kisoIssues = (window.CoreData && CoreData.validateKisoData(window.kisoProductsData)) || [];
+            const status = document.getElementById('status');
+            status.innerHTML = (goodsIssues.length || kisoIssues.length)
+                ? `<div class="issues">Issues: ${goodsIssues.concat(kisoIssues).join(' | ')}</div>`
+                : `<div class="ok">No structural issues detected.</div>`;
+
+            const goodsSchema = CoreData.goodsToSchema(window.goodsData);
+            const kisoSchema = CoreData.kisoToSchema(window.kisoProductsData);
+            document.getElementById('goods').textContent = JSON.stringify(goodsSchema, null, 2);
+            document.getElementById('kiso').textContent = JSON.stringify(kisoSchema, null, 2);
+
+            function download(filename, text) {
+                const blob = new Blob([text], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            document.getElementById('dl-goods').addEventListener('click', function(){
+                download('goods.json', JSON.stringify(goodsSchema, null, 2));
+            });
+            document.getElementById('dl-kiso').addEventListener('click', function(){
+                download('kiso.json', JSON.stringify(kisoSchema, null, 2));
+            });
+            document.getElementById('dl-all').addEventListener('click', function(){
+                const all = [...goodsSchema, ...kisoSchema];
+                download('products.json', JSON.stringify(all, null, 2));
+            });
+        })();
+    </script>
+</body>
+</html>
+
+

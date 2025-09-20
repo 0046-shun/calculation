@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>CorePricing Spec</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .pass { color: #2e7d32; }
+        .fail { color: #d32f2f; }
+        pre { background: #f5f5f5; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>CorePricing Spec</h1>
+    <div id="results"></div>
+    <script src="../core_pricing.js"></script>
+    <script>
+    const { calculateKabiPrice, calculateBMPrice, calculateSO2BuyPrice, calculateNormalProductPrice, calculateKisoPrice, calculateDiscount, checkKisoSetDiscount } = window.CorePricing;
+    function assert(name, cond) {
+        const el = document.createElement('div');
+        el.className = cond ? 'pass' : 'fail';
+        el.textContent = (cond ? '✓ ' : '✗ ') + name;
+        document.getElementById('results').appendChild(el);
+        return cond;
+    }
+    // Fixtures
+    const productsData = {
+        'そのほか': {
+            'カビ': { price: 2500, discountPrice: 1000, discount2Price: 1700 },
+            'BM': { price: 3300, discountConditions: [{type:'category', value:'消毒'}], discountPrice: 2800 }
+        },
+        '床下機器': {
+            'SO2買': { price: 88000 }
+        },
+        '消毒': { '再': { base:70000, price:1500, areaThreshold:40 } }
+    };
+    const kisoProductsData = {
+        '新規工事': {
+            '外基礎': { '高さ別価格': { '30': { '基本価格': 510000, '長さ加算': 6000 }, '40': { '基本価格': 540000, '長さ加算': 7000 } }, '基本長さ': 20 },
+            '中基礎': { '高さ別価格': { '30': { '基本価格': 450000, '長さ加算': 6000 } }, '基本長さ': 10 }
+        },
+        'クラック': {
+            '外クラック': { '高さ別価格': { '30': { '基本価格': 0, '長さ加算': 10000 } } }
+        }
+    };
+    // Tests
+    (function(){
+        // Kabi
+        assert('カビ 基本2500×2=5000', calculateKabiPrice(2, [], productsData) === 5000);
+        assert('カビ 消毒併用→1000×3=3000', calculateKabiPrice(3, [{category:'消毒'}], productsData) === 3000);
+        assert('カビ DC2併用→1700×1=1700', calculateKabiPrice(1, [{category:'床下機器', item:'DC2'}], productsData) === 1700);
+        assert('カビ 60併用→1700×1=1700', calculateKabiPrice(1, [{category:'床下機器', item:'MJ60'}], productsData) === 1700);
+        // BM
+        assert('BM 基本3300×2=6600', calculateBMPrice(2, [], productsData) === 6600);
+        assert('BM 消毒併用→2800×2=5600', calculateBMPrice(2, [{category:'消毒'}], productsData) === 5600);
+        // SO2買
+        assert('SO2買 単体→88000×1=88000', calculateSO2BuyPrice(1, [], productsData['床下機器']['SO2買']) === 88000);
+        assert('SO2買 DC2併用→83000×1=83000', calculateSO2BuyPrice(1, [{item:'DC2'}], productsData['床下機器']['SO2買']) === 83000);
+        // Normal
+        assert('通常(消毒/再) 38→ base70000 + (0) = 70000', calculateNormalProductPrice(productsData['消毒']['再'], 38) === 70000);
+        assert('通常(消毒/再) 45→ base70000 + 1500×5=77500', calculateNormalProductPrice(productsData['消毒']['再'], 45) === 77500);
+        // Kiso
+        const k1 = calculateKisoPrice('新規工事', '外基礎', '30', 25, 0, kisoProductsData);
+        assert('外基礎30 高さ: 基本510000 + 超過5×6000=540000', k1.ex === 540000);
+        const k2 = calculateKisoPrice('クラック', '外クラック', '30', 3, 0, kisoProductsData);
+        assert('外クラック30 3個→ 10000×3=30000', k2.ex === 30000);
+        // Discount
+        assert('割引10% of 10000 → 1000', calculateDiscount(10000, 10, 1) === 1000);
+        assert('割引固定1000 of 500 → 500(上限)', calculateDiscount(500, 1000, 1) === 500);
+        // Set
+        assert('セット割判定 外/中基礎あり→true', checkKisoSetDiscount([{category:'新規工事', item:'外基礎'}, {category:'新規工事', item:'中基礎'}]) === true);
+    })();
+    </script>
+</body>
+</html>
+
+

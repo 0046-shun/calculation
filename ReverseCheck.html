@@ -16,6 +16,30 @@
     <button id="clear-button">クリア</button>
     <div id="result-area"></div>
     <script src="./data.js"></script>
+    <script src="./core_data.js"></script>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script>
+      window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {};
+    </script>
+    <script src="./firebase-config.js"></script>
+    <script src="./core_data_fetch.js"></script>
+    <script>
+      window.FEATURE_USE_FIRESTORE = true; // use Firestore
+      if (window.CoreDataFetch) {
+        CoreDataFetch.loadData().then(function(){
+          // data loaded for reverse check
+        });
+      }
+    </script>
+    <script>
+      // 正規化キャッシュを初期化（検索/一致判定用）
+      window.normalizedGoods = (window.CoreData && window.CoreData.normalizeGoods) ? window.CoreData.normalizeGoods(window.goodsData) : {};
+      window.normalizedKiso = (window.CoreData && window.CoreData.normalizeKiso) ? window.CoreData.normalizeKiso(window.kisoProductsData) : {};
+    </script>
+    <script src="./core_pricing.js"></script>
+    <script src="./core_utils.js"></script>
     <script src="./reverse_check.js"></script>
     <script>
       console.log('data.js loaded');

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8" />
+    <title>管理者画面（Products）</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f7f7f9; }
+        header { background: #1f6feb; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+        main { padding: 16px; }
+        .card { background: #fff; border: 1px solid #e2e2e6; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .row { display: flex; gap: 12px; flex-wrap: wrap; }
+        input, select, button, textarea { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid #eee; text-align: left; padding: 8px; }
+        .muted { color: #6b7280; }
+        .right { text-align: right; }
+        .danger { background: #ef4444; color:#fff; border: none; }
+        .primary { background: #2563eb; color:#fff; border: none; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>管理者画面（商品管理）</div>
+        <div>
+            <button id="signin" class="primary">Googleでサインイン</button>
+            <button id="signout" class="danger" style="display:none">サインアウト</button>
+        </div>
+    </header>
+    <main>
+        <div id="msg" class="card" style="display:none;color:#b91c1c;background:#fff7ed;border-color:#fecaca"></div>
+        <div class="card">
+            <h3 style="margin:0 0 8px;">新規登録</h3>
+            <div class="row">
+                <label>カテゴリ</label>
+                <select id="category"></select>
+                <label>商品名</label>
+                <input id="itemName" placeholder="再 / 外基礎 など" list="itemNameList" />
+                <datalist id="itemNameList"></datalist>
+                <label>助数詞</label>
+                <input id="unitLabel" placeholder="㎡ / m / 個" style="width:120px" list="unitLabelList" />
+                <datalist id="unitLabelList"></datalist>
+                <label>公開状態</label>
+                <select id="status">
+                    <option value="draft">下書き</option>
+                    <option value="published" selected>公開</option>
+                </select>
+            </div>
+            <div class="row" style="margin-top:10px">
+                <label>商品タイプ</label>
+                <label><input type="radio" name="add-type" value="normal" checked> 通常商品</label>
+                <label><input type="radio" name="add-type" value="kiso"> 基礎商品</label>
+            </div>
+            <div id="add-normal" class="row" style="margin-top:10px">
+                <label>基本価格</label><input id="base" type="number" placeholder="例: 70000" />
+                <label>単価</label><input id="unitPrice" type="number" placeholder="例: 1500" />
+                <label>基本数量</label><input id="basicQty" type="number" placeholder="例: 40" />
+                <select id="excessCalc">
+                    <option value="overOnly">超過のみ加算</option>
+                    <option value="perQty">数量分加算</option>
+                    <option value="none">加算なし</option>
+                </select>
+            </div>
+            <div id="add-kiso" class="row" style="margin-top:10px; display:none;">
+                <div class="muted" style="margin-bottom:6px">高さ別のJSON（例）:</div>
+                <textarea id="pricingByHeight" rows="4" cols="60" class="muted" placeholder='{"30": {"basicPrice": 510000, "lengthUnitPrice": 6000, "basicLength": 20}}'></textarea>
+            </div>
+            <div class="row" style="margin-top:10px">
+                <button id="add" class="primary">登録</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="row" style="justify-content: space-between; align-items: center;">
+                <div class="muted">商品一覧</div>
+                <div class="row" style="gap:8px; align-items:center;">
+                    <label>公開</label>
+                    <select id="filterStatus">
+                        <option value="all">すべて</option>
+                        <option value="published" selected>公開</option>
+                        <option value="draft">下書き</option>
+                    </select>
+                    <label>カテゴリ</label>
+                    <select id="filterCategory">
+                        <option value="all">すべて</option>
+                    </select>
+                    <button id="reload">再読み込み</button>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>カテゴリ</th><th>商品名</th><th>助数詞</th><th>公開状態</th><th class="right">操作</th></tr>
+                </thead>
+                <tbody id="list"></tbody>
+            </table>
+        </div>
+
+        <!-- 編集モーダル -->
+        <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center;">
+            <div style="background:#fff; width:min(760px, 95vw); border-radius:10px; border:1px solid #e5e7eb; padding:16px;">
+                <h3 style="margin-top:0">商品を編集</h3>
+                <div class="row">
+                    <label>カテゴリ</label>
+                    <select id="edit-category"></select>
+                    <label>商品名</label>
+                    <input id="edit-itemName" list="edit-itemNameList" />
+                    <datalist id="edit-itemNameList"></datalist>
+                    <label>助数詞</label>
+                    <input id="edit-unitLabel" placeholder="㎡ / m / 個" style="width:120px" list="edit-unitLabelList" />
+                    <datalist id="edit-unitLabelList"></datalist>
+                    <label>公開状態</label>
+                    <select id="edit-status">
+                        <option value="draft">下書き</option>
+                        <option value="published">公開</option>
+                    </select>
+                </div>
+                <div class="row" style="margin-top:10px">
+                    <label>商品タイプ</label>
+                    <label><input type="radio" name="edit-type" value="normal" checked> 通常</label>
+                    <label><input type="radio" name="edit-type" value="kiso"> 基礎</label>
+                </div>
+                <div id="edit-normal" class="row" style="margin-top:10px">
+                    <label>基本価格</label><input id="edit-base" type="number" />
+                    <label>単価</label><input id="edit-unitPrice" type="number" />
+                    <label>基本数量</label><input id="edit-basicQty" type="number" />
+                    <select id="edit-excessCalc">
+                        <option value="overOnly">超過のみ加算</option>
+                        <option value="perQty">数量分加算</option>
+                        <option value="none">加算なし</option>
+                    </select>
+                </div>
+                <div id="edit-kiso" class="row" style="margin-top:10px; display:none;">
+                    <div class="muted" style="margin-bottom:6px">高さ別のJSON</div>
+                    <textarea id="edit-pricingByHeight" rows="6" cols="80" class="muted" placeholder='{"30": {"basicPrice": 510000, "lengthUnitPrice": 6000, "basicLength": 20}}'></textarea>
+                </div>
+                <div class="row" style="margin-top:12px; justify-content:flex-end; gap:8px;">
+                    <button id="edit-cancel">キャンセル</button>
+                    <button id="edit-save" class="primary">保存</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script>
+    // Init
+    firebase.initializeApp(window.FIREBASE_CONFIG || {});
+    const db = firebase.firestore();
+
+    // Auth
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const signinBtn = document.getElementById('signin');
+    const signoutBtn = document.getElementById('signout');
+    const msgBox = document.getElementById('msg');
+
+    function showError(message) {
+        console.error(message);
+        msgBox.style.display = '';
+        msgBox.textContent = String(message);
+    }
+    firebase.auth().onAuthStateChanged(user => {
+        const loggedIn = !!user;
+        signinBtn.style.display = loggedIn ? 'none' : '';
+        signoutBtn.style.display = loggedIn ? '' : 'none';
+        if (loggedIn) {
+            msgBox.style.display = 'none';
+        }
+    });
+    signinBtn.onclick = async () => {
+        try {
+            await firebase.auth().signInWithPopup(provider);
+        } catch (e) {
+            // Popup ブロックや非対応環境は Redirect に自動フォールバック
+            if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) {
+                try {
+                    await firebase.auth().signInWithRedirect(provider);
+                } catch (e2) {
+                    showError(`${e2.code || ''} ${e2.message || e2}`);
+                }
+                return;
+            }
+            if (e && e.code === 'auth/unauthorized-domain') {
+                showError('認証ドメイン未承認: Authentication → 設定 → 承認済みドメインに 127.0.0.1 / localhost を追加してください');
+                return;
+            }
+            if (e && e.code === 'auth/operation-not-allowed') {
+                showError('Google プロバイダ未有効: Authentication → サインイン方法 → Google を有効化してください');
+                return;
+            }
+            showError(`${e.code || ''} ${e.message || e}`);
+        }
+    };
+    signoutBtn.onclick = () => firebase.auth().signOut();
+
+    // Add product
+    // 入力タイプ切替
+    function toggleAddType(type) {
+        document.getElementById('add-normal').style.display = (type === 'normal') ? '' : 'none';
+        document.getElementById('add-kiso').style.display = (type === 'kiso') ? '' : 'none';
+    }
+    Array.from(document.querySelectorAll('input[name="add-type"]')).forEach(r => {
+        r.onchange = () => toggleAddType(r.value);
+    });
+    document.getElementById('add').onclick = async () => {
+        const category = document.getElementById('category').value.trim();
+        const itemName = document.getElementById('itemName').value.trim();
+        const unitLabel = document.getElementById('unitLabel').value.trim();
+        const status = document.getElementById('status').value;
+        const base = Number(document.getElementById('base').value || 0);
+        const unitPrice = Number(document.getElementById('unitPrice').value || 0);
+        const basicQty = document.getElementById('basicQty').value ? Number(document.getElementById('basicQty').value) : null;
+        const excessCalc = document.getElementById('excessCalc').value;
+        const pbhText = document.getElementById('pricingByHeight').value.trim();
+        const type = document.querySelector('input[name="add-type"]:checked').value;
+
+        const doc = { category, itemName, unitLabel, status };
+        if (type === 'kiso') {
+            try { doc.pricingByHeight = JSON.parse(pbhText); } catch (e) { alert('pricingByHeight のJSONが不正です'); return; }
+        } else {
+            doc.pricing = { base, unitPrice, basicQty, excessCalc };
+        }
+        await db.collection('products').add(doc);
+        alert('追加しました');
+        load();
+    };
+
+    // List
+    async function load() {
+        const filterStatus = document.getElementById('filterStatus').value;
+        const filterCategory = document.getElementById('filterCategory').value;
+        let q = db.collection('products');
+        // 複合インデックス不要にするため、サーバ側では最大1条件だけ適用
+        if (filterStatus !== 'all') {
+            q = q.where('status','==', filterStatus);
+        } else if (filterCategory !== 'all') {
+            q = q.where('category','==', filterCategory);
+        }
+        const snap = await q.limit(1000).get();
+        const tbody = document.getElementById('list');
+        tbody.innerHTML = '';
+        // クライアント側で残りのフィルタと並び替え適用
+        const rows = [];
+        snap.forEach(d => {
+            const v = d.data();
+            if (filterCategory !== 'all' && filterStatus !== 'all') {
+                // status はサーバ側で絞っているため category のみ確認
+                if (v.category !== filterCategory) return;
+            }
+            rows.push({ id: d.id, v });
+        });
+        const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+        const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+        rows.sort((a, b) => {
+            const ca = String(a.v.category || '');
+            const cb = String(b.v.category || '');
+            const ia = orderMap.has(ca) ? orderMap.get(ca) : Number.MAX_SAFE_INTEGER;
+            const ib = orderMap.has(cb) ? orderMap.get(cb) : Number.MAX_SAFE_INTEGER;
+            if (ia !== ib) return ia - ib;
+            return String(a.v.itemName || '').localeCompare(String(b.v.itemName || ''));
+        });
+        rows.forEach(({id, v}) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${v.category||''}</td><td>${v.itemName||''}</td><td>${v.unitLabel||''}</td><td>${v.status||''}</td>
+                <td class="right">
+                    <button data-id="${id}" class="edit">編集</button>
+                    <button data-id="${id}" class="publish">公開</button>
+                    <button data-id="${id}" class="draft">下書き</button>
+                    <button data-id="${id}" class="remove danger">削除</button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+
+        tbody.querySelectorAll('.edit').forEach(b => b.onclick = () => openEdit(b.dataset.id));
+        tbody.querySelectorAll('.publish').forEach(b => b.onclick = () => updateStatus(b.dataset.id, 'published'));
+        tbody.querySelectorAll('.draft').forEach(b => b.onclick = () => updateStatus(b.dataset.id, 'draft'));
+        tbody.querySelectorAll('.remove').forEach(b => b.onclick = () => removeDoc(b.dataset.id));
+    }
+
+    async function updateStatus(id, status) {
+        await db.collection('products').doc(id).update({ status });
+        load();
+    }
+    async function removeDoc(id) {
+        if (!confirm('削除しますか？')) return;
+        await db.collection('products').doc(id).delete();
+        load();
+    }
+
+    document.getElementById('reload').onclick = load;
+    // カテゴリ選択を商品データから自動生成
+    async function fillCategoriesAndLists() {
+        const catSet = new Set(["消毒","そのほか","床下機器","新規工事","追加工事","クラック","害虫","断熱遮熱","天井機器","旧商品","基礎関連"]);
+        const nameSet = new Set();
+        const unitSet = new Set(['㎡','m','個','台','本']);
+        try {
+            const snap = await db.collection('products').limit(1000).get();
+            snap.forEach(d => {
+                const v = d.data();
+                if (v?.category) catSet.add(v.category);
+                if (v?.itemName) nameSet.add(v.itemName);
+                if (v?.unitLabel) unitSet.add(v.unitLabel);
+            });
+        } catch (e) { /* ignore */ }
+        const categories = Array.from(catSet);
+        const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+        const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+        categories.sort((a,b)=>{
+            const ia = orderMap.has(a) ? orderMap.get(a) : Number.MAX_SAFE_INTEGER;
+            const ib = orderMap.has(b) ? orderMap.get(b) : Number.MAX_SAFE_INTEGER;
+            if (ia !== ib) return ia - ib;
+            return String(a).localeCompare(String(b));
+        });
+        const selects = [document.getElementById('category'), document.getElementById('edit-category'), document.getElementById('filterCategory')];
+        selects.forEach(sel => {
+            sel.innerHTML = '';
+            const base = sel.id === 'filterCategory' ? ['すべて'] : [];
+            base.forEach(label => {
+                const opt = document.createElement('option');
+                opt.value = 'all'; opt.textContent = label;
+                sel.appendChild(opt);
+            });
+            categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                sel.appendChild(opt);
+            });
+        });
+        function fillDatalist(id, values) {
+            const dl = document.getElementById(id);
+            dl.innerHTML = '';
+            values.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v; dl.appendChild(opt);
+            });
+        }
+        fillDatalist('itemNameList', Array.from(nameSet));
+        fillDatalist('edit-itemNameList', Array.from(nameSet));
+        fillDatalist('unitLabelList', Array.from(unitSet));
+        fillDatalist('edit-unitLabelList', Array.from(unitSet));
+    }
+    fillCategoriesAndLists();
+    load();
+
+    // ---- 編集ロジック ----
+    let editingId = null;
+    function toggleEditType(type) {
+        document.getElementById('edit-normal').style.display = (type === 'normal') ? '' : 'none';
+        document.getElementById('edit-kiso').style.display = (type === 'kiso') ? '' : 'none';
+    }
+    function bindTypeRadios() {
+        Array.from(document.querySelectorAll('input[name="edit-type"]')).forEach(r => {
+            r.onchange = () => toggleEditType(r.value);
+        });
+    }
+    bindTypeRadios();
+
+    async function openEdit(id) {
+        editingId = id;
+        const snap = await db.collection('products').doc(id).get();
+        const v = snap.data() || {};
+        document.getElementById('edit-category').value = v.category || '';
+        document.getElementById('edit-itemName').value = v.itemName || '';
+        document.getElementById('edit-unitLabel').value = v.unitLabel || '';
+        document.getElementById('edit-status').value = v.status || 'draft';
+        if (v.pricingByHeight) {
+            document.querySelector('input[name="edit-type"][value="kiso"]').checked = true;
+            toggleEditType('kiso');
+            document.getElementById('edit-pricingByHeight').value = JSON.stringify(v.pricingByHeight, null, 2);
+            document.getElementById('edit-base').value = '';
+            document.getElementById('edit-unitPrice').value = '';
+            document.getElementById('edit-basicQty').value = '';
+        } else {
+            document.querySelector('input[name="edit-type"][value="normal"]').checked = true;
+            toggleEditType('normal');
+            const p = v.pricing || {};
+            document.getElementById('edit-base').value = (p.base ?? '');
+            document.getElementById('edit-unitPrice').value = (p.unitPrice ?? '');
+            document.getElementById('edit-basicQty').value = (p.basicQty ?? '');
+            document.getElementById('edit-excessCalc').value = (p.excessCalc || 'overOnly');
+            document.getElementById('edit-pricingByHeight').value = '';
+        }
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    document.getElementById('edit-cancel').onclick = () => {
+        document.getElementById('editModal').style.display = 'none';
+        editingId = null;
+    };
+
+    document.getElementById('edit-save').onclick = async () => {
+        if (!editingId) return;
+        try {
+            const type = document.querySelector('input[name="edit-type"]:checked').value;
+            const update = {
+                category: document.getElementById('edit-category').value.trim(),
+                itemName: document.getElementById('edit-itemName').value.trim(),
+                unitLabel: document.getElementById('edit-unitLabel').value.trim(),
+                status: document.getElementById('edit-status').value
+            };
+            if (type === 'kiso') {
+                const txt = document.getElementById('edit-pricingByHeight').value.trim();
+                if (!txt) throw new Error('pricingByHeight を入力してください');
+                update.pricingByHeight = JSON.parse(txt);
+                update.pricing = firebase.firestore.FieldValue.delete();
+            } else {
+                update.pricing = {
+                    base: Number(document.getElementById('edit-base').value || 0),
+                    unitPrice: Number(document.getElementById('edit-unitPrice').value || 0),
+                    basicQty: document.getElementById('edit-basicQty').value ? Number(document.getElementById('edit-basicQty').value) : null,
+                    excessCalc: document.getElementById('edit-excessCalc').value
+                };
+                update.pricingByHeight = firebase.firestore.FieldValue.delete();
+            }
+            await db.collection('products').doc(editingId).update(update);
+            document.getElementById('editModal').style.display = 'none';
+            editingId = null;
+            load();
+        } catch (e) {
+            showError(e.message || e);
+        }
+    };
+    </script>
+</body>
+</html>
+
+

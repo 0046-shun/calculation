@@ -41,11 +41,12 @@ setTimeout(function() {
 const MANAGEMENT_FEE = 20000;
 // ALIAS_MAPは使わない
 
-// 文字列をnormalize（前後スペース除去・全角→半角・小文字化）
+// 文字列正規化（共通ユーティリティへ委譲）
 function normalize(str) {
-    return str.trim().replace(/[\uFF01-\uFF5E]/g, function(ch) {
-        return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0);
-    }).toLowerCase();
+    if (window.CoreUtils && typeof window.CoreUtils.normalizeText === 'function') {
+        return window.CoreUtils.normalizeText(str);
+    }
+    return (str || '').trim().toLowerCase();
 }
 
 // カテゴリーごとの商品名をフラットなリストに変換
@@ -63,54 +64,50 @@ function getAllGoodsList(goodsData) {
     return list;
 }
 
-// --- script.jsの計算ロジックを移植 ---
+// --- コア計算のモジュール化は未使用（UNC互換のため） ---
+
+// カビの価格を計算する関数（window.goodsData ベース）
 function calculateKabiPrice(quantity, selectedProducts) {
-    const kabiData = window.goodsData["そのほか"]["カビ"];
+    const kabiData = window.goodsData && window.goodsData["そのほか"] && window.goodsData["そのほか"]["カビ"];
+    if (!kabiData) return 0;
     let appliedPrice = kabiData.price;
-    for (const product of selectedProducts) {
+    for (const product of (selectedProducts || [])) {
         if (product.category === "消毒") {
             appliedPrice = kabiData.discountPrice;
             break;
         }
-        if (product.category === "床下機器" && (product.item.includes("DC2") || product.item.includes("60"))) {
+        if (product.item && (product.item.includes("DC2") || product.item.includes("60"))) {
             appliedPrice = kabiData.discount2Price;
             break;
         }
     }
-    return appliedPrice * quantity;
+    return (Number(quantity) || 0) * (appliedPrice || 0);
 }
 
+// BMの価格を計算する関数（window.goodsData ベース）
 function calculateBMPrice(quantity, selectedProducts) {
-    const bmData = window.goodsData["そのほか"]["BM"];
+    const bmData = window.goodsData && window.goodsData["そのほか"] && window.goodsData["そのほか"]["BM"];
+    if (!bmData) return 0;
     let appliedPrice = bmData.price;
-    const hasExistingDiscount = selectedProducts.some(product => {
-        if (bmData.discountConditions.some(condition =>
-            condition.type === "category" && condition.value === product.category)) {
-            return true;
-        }
-        if (bmData.discountConditions.some(condition =>
-            condition.type === "item" && condition.value === product.item)) {
-            return true;
-        }
+    const hasExistingDiscount = (selectedProducts || []).some(product => {
+        if (!bmData.discountConditions) return false;
+        if (bmData.discountConditions.some(c => c.type === "category" && c.value === product.category)) return true;
+        if (bmData.discountConditions.some(c => c.type === "item" && c.value === product.item)) return true;
         return false;
     });
-    const hasKiso = selectedProducts.some(product =>
-        (product.item && (product.item.includes("外基礎") || product.item.includes("中基礎")))
-    );
-    if (hasExistingDiscount || hasKiso) {
-        appliedPrice = bmData.discountPrice;
-    }
-    return appliedPrice * quantity;
+    const hasKiso = (selectedProducts || []).some(product => product.item && (product.item.includes("外基礎") || product.item.includes("中基礎")));
+    if (hasExistingDiscount || hasKiso) appliedPrice = bmData.discountPrice;
+    return (Number(quantity) || 0) * (appliedPrice || 0);
 }
 
+// 値引きの計算関数
 function calculateDiscount(price, discountValue) {
-    if (!discountValue || discountValue <= 0) return 0;
-    if (discountValue < 100) {
-        return Math.floor(price * (discountValue / 100));
-    }
-    return Math.min(discountValue, price);
+    const p = Number(price) || 0;
+    const d = Number(discountValue) || 0;
+    if (d <= 0) return 0;
+    if (d < 100) return Math.floor(p * (d / 100));
+    return Math.min(d, p);
 }
-// --- ここまでscript.jsロジック ---
 
 function parseDiscountFromName(name) {
     // (外基礎・中基礎)▲セット → 40,000円割引
@@ -693,88 +690,87 @@ function renderCheckTable() {
             if (matched) {
                 // 金額計算ロジック
                 if (isKiso) {
-                    if (kisoCategory === 'クラック') {
-                        // クラック系の計算：高さ*個数で計算
-                        amount = calculateBasePrice('クラック', matchedKey, kisoHeight, kisoLength);
-                        // 基礎セット値引きの場合は個別値引きを適用しない
-                        if (!isKisoSetDiscount) {
-                            amount -= calculateDiscount(amount, discountValue);
-                        }
-                        console.log('クラック計算結果:', { 
-                            category: 'クラック', 
-                            item: matchedKey, 
-                            height: kisoHeight, 
-                            count: kisoLength, 
-                            baseAmount: amount + (isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue)), 
-                            discount: isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue), 
-                            finalAmount: amount 
-                        });
+                    // CorePricing がある場合は純関数で算出（割引はセット割適用時は0）
+                    if (window.CorePricing) {
+                        const kisoEx = window.CorePricing.calculateKisoPrice(
+                            kisoCategory === 'クラック' ? 'クラック' : matchedCategory,
+                            matchedKey,
+                            kisoHeight,
+                            kisoLength,
+                            isKisoSetDiscount ? 0 : (discountValue || 0),
+                            window.kisoProductsData
+                        ).ex;
+                        amount = kisoEx;
                     } else {
-                        // 基礎商品の計算（kisoHeight, kisoLengthが定義済み）
-                        amount = calculateBasePrice(matchedCategory, matchedKey, kisoHeight, kisoLength);
-                        // 基礎セット値引きの場合は個別値引きを適用しない
+                        // 既存ロジック
+                        if (kisoCategory === 'クラック') {
+                            amount = calculateBasePrice('クラック', matchedKey, kisoHeight, kisoLength);
+                        } else {
+                            amount = calculateBasePrice(matchedCategory, matchedKey, kisoHeight, kisoLength);
+                        }
                         if (!isKisoSetDiscount) {
                             amount -= calculateDiscount(amount, discountValue);
                         }
-                        console.log('基礎商品計算結果:', { 
-                            category: matchedCategory, 
-                            item: matchedKey, 
-                            height: kisoHeight, 
-                            length: kisoLength, 
-                            baseAmount: amount + (isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue)), 
-                            discount: isKisoSetDiscount ? 0 : calculateDiscount(amount, discountValue), 
-                            finalAmount: amount 
-                        });
-                        
-                        // 外基礎・中基礎の金額を記録（基礎セット値引き用）
-                        if (matchedKey.includes('外基礎')) {
-                            gaiKisoAmount = amount; // 値引き前の金額
-                        } else if (matchedKey.includes('中基礎')) {
-                            nakaKisoAmount = amount; // 値引き前の金額
-                        }
+                    }
+                    // 外基礎・中基礎の金額を記録（基礎セット値引き用）
+                    if (matchedKey.includes('外基礎')) {
+                        gaiKisoAmount = amount;
+                    } else if (matchedKey.includes('中基礎')) {
+                        nakaKisoAmount = amount;
                     }
                 } else if ((matchedCategory === "消毒" && matchedKey === "カビ") || 
                            (matchedCategory === "そのほか" && matchedKey === "カビ")) {
-                    amount = calculateKabiPrice(thisQty, selectedProducts);
-                    amount -= calculateDiscount(amount, discountValue);
-                } else if (matchedCategory === "そのほか" && matchedKey === "BM") {
-                    amount = calculateBMPrice(thisQty, selectedProducts);
-                    amount -= calculateDiscount(amount, discountValue);
-                } else if (matchedCategory === "床下機器" && matchedKey === "SO2買") {
-                    // 同じ行内の他の商品名をチェック（DC2またはMJ60のどちらかが商品群にある場合）
-                    const hasDC2 = nameParts.some(part => 
-                        part.trim() && part.trim().includes("DC2")
-                    );
-                    const hasMJ60 = nameParts.some(part => 
-                        part.trim() && part.trim().includes("MJ60")
-                    );
-                    
-                    // DC2またはMJ60のどちらかが商品群にある場合は特別割引価格を適用
-                    const hasSpecialDiscount = hasDC2 || hasMJ60;
-                    console.log('SO2買の価格判定:', { 
-                        hasDC2, 
-                        hasMJ60, 
-                        hasSpecialDiscount, 
-                        normalPrice: matched.price, 
-                        discountPrice: 83000,
-                        nameParts: nameParts
-                    });
-
-                    // 特別割引価格または通常価格を適用
-                    const unitPrice = hasSpecialDiscount ? 83000 : matched.price;
-                    amount = unitPrice * thisQty;
-                    amount -= calculateDiscount(amount, discountValue);
-                } else {
-                    let totalPrice = matched.base || 0;
-                    if (matched.areaThreshold) {
-                        if (thisQty > matched.areaThreshold) {
-                            totalPrice += matched.price * (thisQty - matched.areaThreshold);
-                        }
+                    if (window.CorePricing) {
+                        amount = window.CorePricing.calculateKabiPrice(thisQty, selectedProducts, window.goodsData);
+                        amount -= calculateDiscount(amount, discountValue);
                     } else {
-                        totalPrice += matched.price * thisQty;
+                        amount = calculateKabiPrice(thisQty, selectedProducts);
+                        amount -= calculateDiscount(amount, discountValue);
                     }
-                    amount = totalPrice;
-                    amount -= calculateDiscount(amount, discountValue);
+                } else if (matchedCategory === "そのほか" && matchedKey === "BM") {
+                    if (window.CorePricing) {
+                        amount = window.CorePricing.calculateBMPrice(thisQty, selectedProducts, window.goodsData);
+                        amount -= calculateDiscount(amount, discountValue);
+                    } else {
+                        amount = calculateBMPrice(thisQty, selectedProducts);
+                        amount -= calculateDiscount(amount, discountValue);
+                    }
+                } else if (matchedCategory === "床下機器" && matchedKey === "SO2買") {
+                    if (window.CorePricing && typeof window.CorePricing.calculateProductLine === 'function') {
+                        const result = window.CorePricing.calculateProductLine({
+                            type: 'normal',
+                            category: matchedCategory,
+                            item: matchedKey,
+                            quantity: thisQty,
+                            discountValue: discountValue,
+                            productsData: window.goodsData,
+                            selectedProductsContext: selectedProducts
+                        });
+                        amount = result.ex;
+                    } else {
+                        const hasDC2 = nameParts.some(part => part.trim() && part.trim().includes("DC2"));
+                        const hasMJ60 = nameParts.some(part => part.trim() && part.trim().includes("MJ60"));
+                        const hasSpecialDiscount = hasDC2 || hasMJ60;
+                        const unitPrice = hasSpecialDiscount ? 83000 : matched.price;
+                        amount = unitPrice * thisQty;
+                        amount -= calculateDiscount(amount, discountValue);
+                    }
+                } else {
+                    if (window.CorePricing) {
+                        const ex = window.CorePricing.calculateNormalProductPrice(matched, thisQty);
+                        amount = ex - calculateDiscount(ex, discountValue);
+                    } else {
+                        let totalPrice = matched.base || 0;
+                        if (matched.areaThreshold) {
+                            if (thisQty > matched.areaThreshold) {
+                                totalPrice += matched.price * (thisQty - matched.areaThreshold);
+                            }
+                        } else {
+                            totalPrice += matched.price * thisQty;
+                        }
+                        amount = totalPrice;
+                        amount -= calculateDiscount(amount, discountValue);
+                    }
                 }
 
                 systemNames.push(matchedKey);
@@ -940,7 +936,10 @@ function getKisoCandidates(category) {
 }
 
 function formatNumber(number) {
-    return number.toLocaleString();
+    if (window.CoreUtils && typeof window.CoreUtils.formatNumber === 'function') {
+        return window.CoreUtils.formatNumber(number);
+    }
+    return Number(number).toLocaleString();
 }
 
 function findPartialMatches(searchName) {
@@ -987,46 +986,17 @@ function findPartialMatches(searchName) {
 }
 
 function normalizeProductName(name) {
-    if (!name) return '';
-    // 略称・表記ゆれを正規化
-    return name
-        .replace(/[・\u30fb,、\s]/g, '')
-        // クラの表記ゆれをすべて「クラ」に統一
-        .replace(/(外|中片|中両)[ｸｸ][ﾗﾗ]|(外|中片|中両)[Kk][Uu][Rr][Aa]|(外|中片|中両)KURA/g, '$1クラ')
-        .replace(/外クラ|外ｸﾗ|外KURA|外kura/g, '外クラ')
-        .replace(/中両クラ|中両ｸﾗ|中両KURA|中両kura/g, '中両クラ')
-        .replace(/中片クラ|中片ｸﾗ|中片KURA|中片kura/g, '中片クラ')
-        .replace(/クラ|ｸﾗ|KURA|kura/g, 'クラ')
-        .replace(/外基礎/g, '外基礎')
-        .replace(/中基礎/g, '中基礎')
-        .toLowerCase();
+    if (window.CoreUtils && typeof window.CoreUtils.normalizeProductName === 'function') {
+        return window.CoreUtils.normalizeProductName(name);
+    }
+    return normalize(name);
 }
 
 function calculateSimilarity(str1, str2) {
-    if (!str1 || !str2) return 0;
-    
-    // レーベンシュタイン距離を計算
-    const matrix = Array(str1.length + 1).fill().map(() => 
-        Array(str2.length + 1).fill(0)
-    );
-
-    for (let i = 0; i <= str1.length; i++) matrix[i][0] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= str1.length; i++) {
-        for (let j = 1; j <= str2.length; j++) {
-            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-            matrix[i][j] = Math.min(
-                matrix[i - 1][j] + 1,     // 削除
-                matrix[i][j - 1] + 1,     // 挿入
-                matrix[i - 1][j - 1] + cost  // 置換
-            );
-        }
+    if (window.CoreUtils && typeof window.CoreUtils.calculateSimilarity === 'function') {
+        return window.CoreUtils.calculateSimilarity(str1, str2);
     }
-
-    const maxLength = Math.max(str1.length, str2.length);
-    const distance = matrix[str1.length][str2.length];
-    return 1 - (distance / maxLength);
+    return 0;
 }
 
 // クリア機能の実装
