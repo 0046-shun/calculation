@@ -125,7 +125,61 @@ Excel形式:
 ### 使用技術
 - **フロントエンド**: HTML5, CSS3, JavaScript (ES6+)
 - **スタイリング**: レスポンシブデザイン対応
-- **データ**: data.js による商品データ管理
+- **データ**: data.js / Firestore による商品データ管理（Feature Flag で切替）
+
+---
+
+## 🧑‍💻 開発フロー（ブランチ運用）
+
+- ブランチ方針
+  - `master`: デプロイ用（保護推奨・直接 push しない）
+  - `dev`: 作業統合用（ここから派生して開発）
+  - `feature/*`: 機能ごとの短命ブランチ（例: `feature/admin-edit-modal`）
+
+- 新しい端末でのセットアップ（最短）
+```bash
+git clone -b dev <REPO_URL>
+# 既に clone 済みなら
+# git fetch --all && git checkout dev && git pull
+```
+
+- 作業の流れ（例）
+```bash
+git checkout -b feature/some-change
+# 変更
+git add -A
+git commit -m "feat: some change"
+git push -u origin feature/some-change
+# GitHub で PR を作成 → dev にマージ
+```
+
+- リリース時の流れ
+  1) `dev` → `master` へ PR 作成
+  2) テスト確認後にマージ（マージで自動/手動デプロイ）
+
+> 個人開発でも「dev → PR → master」の運用にしておくと、誤 push や未検証変更の混入を防げます。
+
+---
+
+## 🔐 Firebase/Firestore の使い方
+
+- 認証: Google サインインを有効化（Firebase Console → Authentication → サインイン方法）
+- 承認済みドメインに `127.0.0.1`/`localhost` を追加
+- 設定: ルートに `firebase-config.js` を置き、以下の形式で設定
+```html
+window.FIREBASE_CONFIG = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  storageBucket: "...",
+  messagingSenderId: "...",
+  appId: "...",
+  measurementId: "..."
+};
+```
+- データ切替: `Calculation.html` などで `window.FEATURE_USE_FIRESTORE = true` にすると Firestore を使用（false なら `data.js` にフォールバック）
+- 管理者画面: `admin.html` から商品登録/編集/公開切替・削除、一覧の並び替え/絞込が可能
+- スキーマ出力: `schema_preview.html` から `products.json` を生成（`docs/DB_SCHEMA.md` に準拠）
 
 ### ファイル構成
 ```
