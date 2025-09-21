@@ -1,0 +1,692 @@
+// グローバル変数
+let selectedProducts = [];
+let productCounter = { normal: 6, basic: 3 };
+
+// 初期化
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+    setupEventListeners();
+});
+
+function initializeApp() {
+    // 商品データを読み込み
+    loadProductData();
+    
+    // タブ切り替えを設定
+    setupTabNavigation();
+    
+    // 初期計算と選択状態の更新
+    updateSelectedProducts();
+}
+
+function setupEventListeners() {
+    // 商品追加ボタン
+    document.getElementById('add-product-button').addEventListener('click', addNewProduct);
+    
+    // 計算ボタン
+    document.getElementById('calculate-button').addEventListener('click', calculateAll);
+    
+    // 全削除ボタン
+    document.getElementById('clear-all-button').addEventListener('click', clearAllProducts);
+    
+    // 管理費チェックボックス
+    document.getElementById('management-fee-checkbox').addEventListener('change', updateTotal);
+    
+    // Excel連携ボタン
+    document.getElementById('copy-to-excel-button').addEventListener('click', copyToExcel);
+}
+
+function loadProductData() {
+    // 通常商品のカテゴリを読み込み（1-6）
+    const normalCategories = Object.keys(productsData);
+    for (let i = 1; i <= 6; i++) {
+        const normalCategorySelect = document.getElementById(`normal-category-${i}`);
+        if (normalCategorySelect) {
+            normalCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                normalCategorySelect.appendChild(option);
+            });
+        }
+    }
+
+    // 基礎商品のカテゴリを読み込み（1-3）
+    const basicCategories = Object.keys(kisoProductsData);
+    for (let i = 1; i <= 3; i++) {
+        const basicCategorySelect = document.getElementById(`basic-category-${i}`);
+        if (basicCategorySelect) {
+            basicCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                basicCategorySelect.appendChild(option);
+            });
+        }
+    }
+}
+
+function setupTabNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+            
+            // タブボタンの状態を更新
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // タブコンテンツの表示を切り替え
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === targetTab) {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
+}
+
+function updateNormalItems(productNumber) {
+    const categorySelect = document.getElementById(`normal-category-${productNumber}`);
+    const itemSelect = document.getElementById(`normal-item-${productNumber}`);
+    
+    // 小項目をクリア
+    itemSelect.innerHTML = '<option value="">大項目を先に選択してください</option>';
+    
+    if (categorySelect.value) {
+        const items = Object.keys(productsData[categorySelect.value]);
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            option.textContent = item;
+            itemSelect.appendChild(option);
+        });
+        itemSelect.disabled = false;
+    } else {
+        itemSelect.disabled = true;
+    }
+}
+
+function updateBasicItems(productNumber) {
+    const categorySelect = document.getElementById(`basic-category-${productNumber}`);
+    const itemSelect = document.getElementById(`basic-item-${productNumber}`);
+    
+    // 小項目をクリア
+    itemSelect.innerHTML = '<option value="">大項目を先に選択してください</option>';
+    
+    if (categorySelect.value) {
+        const items = Object.keys(kisoProductsData[categorySelect.value]);
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            option.textContent = item;
+            itemSelect.appendChild(option);
+        });
+        itemSelect.disabled = false;
+    } else {
+        itemSelect.disabled = true;
+    }
+}
+
+function calculateNormalProduct(productNumber) {
+    const category = document.getElementById(`normal-category-${productNumber}`).value;
+    const item = document.getElementById(`normal-item-${productNumber}`).value;
+    const quantity = parseFloat(document.getElementById(`normal-quantity-${productNumber}`).value) || 0;
+    const discount = parseFloat(document.getElementById(`normal-discount-${productNumber}`).value) || 0;
+
+    if (!category || !item || quantity <= 0) {
+        document.getElementById(`normal-result-ex-${productNumber}`).textContent = '0円';
+        document.getElementById(`normal-result-in-${productNumber}`).textContent = '0円';
+        return;
+    }
+
+    // 商品データを取得
+    const productData = productsData[category][item];
+    if (!productData) return;
+
+    // 価格計算
+    let exTax = productData.base || 0;
+    if (quantity > productData.areaThreshold) {
+        exTax += (quantity - productData.areaThreshold) * productData.price;
+    }
+    // 基本数量以下の場合は基本価格のみ（追加料金なし）
+    
+    // 値引き計算（2桁は%、3桁以上は金額）
+    let discountAmount = 0;
+    if (discount > 0) {
+        if (discount < 100) {
+            // 2桁以下は%として計算
+            discountAmount = exTax * (discount / 100);
+        } else {
+            // 3桁以上は金額として計算
+            discountAmount = discount;
+        }
+    }
+    
+    exTax -= discountAmount;
+    exTax = Math.max(0, exTax);
+    
+    const inTax = Math.floor(exTax * 1.1);
+
+    // 結果を表示
+    document.getElementById(`normal-result-ex-${productNumber}`).textContent = exTax.toLocaleString() + '円';
+    document.getElementById(`normal-result-in-${productNumber}`).textContent = inTax.toLocaleString() + '円';
+
+    // 選択商品リストに追加
+    updateSelectedProducts();
+}
+
+function calculateBasicProduct(productNumber) {
+    const category = document.getElementById(`basic-category-${productNumber}`).value;
+    const item = document.getElementById(`basic-item-${productNumber}`).value;
+    const height = document.getElementById(`basic-height-${productNumber}`).value;
+    const length = parseFloat(document.getElementById(`basic-length-${productNumber}`).value) || 0;
+    const discount = parseFloat(document.getElementById(`basic-discount-${productNumber}`).value) || 0;
+
+    if (!category || !item || !height || length <= 0) {
+        document.getElementById(`basic-result-ex-${productNumber}`).textContent = '0円';
+        document.getElementById(`basic-result-in-${productNumber}`).textContent = '0円';
+        return;
+    }
+
+    // 基礎商品データを取得
+    const productData = kisoProductsData[category][item];
+    if (!productData) return;
+
+    // 指定された高さのデータを取得
+    const heightData = productData["高さ別価格"][height];
+    if (!heightData) return;
+
+    // 価格計算（基礎商品は高さと長さで算出）
+    let exTax = heightData["基本価格"] || 0;
+    const basicLength = productData["基本長さ"] || 0;
+    if (length > basicLength) {
+        exTax += (length - basicLength) * (heightData["長さ加算"] || 0);
+    }
+    
+    // 値引き計算（2桁は%、3桁以上は金額）
+    let discountAmount = 0;
+    if (discount > 0) {
+        if (discount < 100) {
+            // 2桁以下は%として計算
+            discountAmount = exTax * (discount / 100);
+        } else {
+            // 3桁以上は金額として計算
+            discountAmount = discount;
+        }
+    }
+    
+    exTax -= discountAmount;
+    exTax = Math.max(0, exTax);
+    
+    const inTax = Math.floor(exTax * 1.1);
+
+    // 結果を表示
+    document.getElementById(`basic-result-ex-${productNumber}`).textContent = exTax.toLocaleString() + '円';
+    document.getElementById(`basic-result-in-${productNumber}`).textContent = inTax.toLocaleString() + '円';
+
+    // 選択商品リストに追加
+    updateSelectedProducts();
+}
+
+function updateSelectedProducts() {
+    const productList = document.getElementById('selected-products-list');
+    productList.innerHTML = '';
+
+    selectedProducts = [];
+
+    // 通常商品をチェック
+    for (let i = 1; i <= productCounter.normal; i++) {
+        const category = document.getElementById(`normal-category-${i}`).value;
+        const item = document.getElementById(`normal-item-${i}`).value;
+        const quantity = parseFloat(document.getElementById(`normal-quantity-${i}`).value) || 0;
+        const exTax = document.getElementById(`normal-result-ex-${i}`).textContent;
+
+        if (category && item && quantity > 0) {
+            const discount = parseFloat(document.getElementById(`normal-discount-${i}`).value) || 0;
+            selectedProducts.push({
+                type: 'normal',
+                number: i,
+                category: category,
+                item: item,
+                quantity: quantity,
+                discount: discount,
+                exTax: exTax
+            });
+        }
+    }
+
+    // 基礎商品をチェック
+    for (let i = 1; i <= productCounter.basic; i++) {
+        const category = document.getElementById(`basic-category-${i}`).value;
+        const item = document.getElementById(`basic-item-${i}`).value;
+        const height = document.getElementById(`basic-height-${i}`).value;
+        const length = parseFloat(document.getElementById(`basic-length-${i}`).value) || 0;
+        const exTax = document.getElementById(`basic-result-ex-${i}`).textContent;
+
+        if (category && item && height && length > 0) {
+            const discount = parseFloat(document.getElementById(`basic-discount-${i}`).value) || 0;
+            selectedProducts.push({
+                type: 'basic',
+                number: i,
+                category: category,
+                item: item,
+                height: height,
+                length: length,
+                discount: discount,
+                exTax: exTax
+            });
+        }
+    }
+
+    // 商品リストを表示
+    if (selectedProducts.length === 0) {
+        productList.innerHTML = '<li class="empty-state">商品を選択すると、ここに表示されます</li>';
+    } else {
+        selectedProducts.forEach((product, index) => {
+            const li = document.createElement('li');
+            li.className = 'product-item';
+            
+            let details = `数量: ${product.quantity || product.length} | ${product.type === 'normal' ? '通常商品' : '基礎商品'}`;
+            if (product.type === 'basic' && product.height) {
+                details += ` | 高さ: ${product.height}cm`;
+            }
+            
+            // 値引き表示の作成
+            let discountDisplay = '';
+            if (product.discount > 0) {
+                if (product.discount < 100) {
+                    // 2桁以下は%として表示
+                    discountDisplay = `<span class="discount-info">▲${product.discount}%</span>`;
+                } else {
+                    // 3桁以上は金額として表示
+                    discountDisplay = `<span class="discount-info">▲${product.discount.toLocaleString()}円</span>`;
+                }
+            }
+            
+            li.innerHTML = `
+                <div class="product-info">
+                    <div class="product-name">
+                        ${product.category} - ${product.item}
+                        ${discountDisplay}
+                    </div>
+                    <div class="product-details">${details}</div>
+                </div>
+                <div class="product-price">${product.exTax}</div>
+            `;
+            productList.appendChild(li);
+        });
+    }
+
+    // 選択状態の視覚化を更新
+    updateProductSelectionVisuals();
+    updateTotal();
+}
+
+function updateProductSelectionVisuals() {
+    // すべての商品フォームの選択状態をリセット
+    document.querySelectorAll('.product-form').forEach(form => {
+        form.classList.remove('selected');
+    });
+
+    // 選択された商品に選択状態のスタイルを適用
+    selectedProducts.forEach(product => {
+        const productId = `${product.type}-product-${product.number}`;
+        const productForm = document.getElementById(productId);
+        if (productForm) {
+            productForm.classList.add('selected');
+        }
+    });
+
+    // バツボタンの表示制御
+    document.querySelectorAll('.product-form').forEach(form => {
+        const removeButton = form.querySelector('.remove-button');
+        if (removeButton) {
+            const formId = form.id;
+            const isSelected = selectedProducts.some(product => 
+                `${product.type}-product-${product.number}` === formId
+            );
+            
+            // 選択された商品のバツボタンは非表示、未選択の商品は表示
+            removeButton.style.display = isSelected ? 'none' : 'flex';
+        }
+    });
+}
+
+function updateTotal() {
+    let totalExTax = 0;
+
+    // 選択商品の合計を計算
+    selectedProducts.forEach(product => {
+        const price = parseFloat(product.exTax.replace(/[^\d]/g, '')) || 0;
+        totalExTax += price;
+    });
+
+    // 管理費を追加
+    const managementFeeCheckbox = document.getElementById('management-fee-checkbox');
+    if (managementFeeCheckbox.checked) {
+        totalExTax += 20000;
+    }
+
+    const totalInTax = Math.floor(totalExTax * 1.1);
+
+    // 合計を表示
+    document.getElementById('total-ex-tax').textContent = totalExTax.toLocaleString() + '円';
+    document.getElementById('total-in-tax').textContent = totalInTax.toLocaleString() + '円';
+}
+
+function addNewProduct() {
+    // 現在アクティブなタブを取得
+    const activeTab = document.querySelector('.tab-button.active');
+    const tabType = activeTab.getAttribute('data-tab');
+
+    if (tabType === 'normal-products') {
+        addNormalProduct();
+    } else if (tabType === 'basic-products') {
+        addBasicProduct();
+    }
+}
+
+function addNormalProduct() {
+    productCounter.normal++;
+    const newProductNumber = productCounter.normal;
+
+    const newProductHTML = `
+        <div class="product-form" id="normal-product-${newProductNumber}">
+            <div class="form-header">
+                <h3 class="form-title">通常商品 ${newProductNumber}</h3>
+                <button class="remove-button" onclick="removeProduct('normal-product-${newProductNumber}')">
+                    ✕
+                </button>
+            </div>
+            <div class="normal-form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="normal-category-${newProductNumber}">大項目選択</label>
+                    <select class="form-select" id="normal-category-${newProductNumber}" onchange="updateNormalItems(${newProductNumber})">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="normal-item-${newProductNumber}">小項目選択</label>
+                    <select class="form-select" id="normal-item-${newProductNumber}" disabled onchange="calculateNormalProduct(${newProductNumber})">
+                        <option value="">大項目を先に選択してください</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="normal-quantity-${newProductNumber}">数量</label>
+                    <input type="number" class="form-input" id="normal-quantity-${newProductNumber}" min="0" step="1" onchange="calculateNormalProduct(${newProductNumber})">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="normal-discount-${newProductNumber}">値引</label>
+                    <input type="number" class="form-input" id="normal-discount-${newProductNumber}" min="0" step="1" onchange="calculateNormalProduct(${newProductNumber})">
+                </div>
+            </div>
+            <div class="calculation-result">
+                <div class="result-header">計算結果</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">税抜き</div>
+                        <div class="result-value ex-tax" id="normal-result-ex-${newProductNumber}">0円</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">税込み</div>
+                        <div class="result-value" id="normal-result-in-${newProductNumber}">0円</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const normalProductsContainer = document.getElementById('normal-products');
+    normalProductsContainer.insertAdjacentHTML('beforeend', newProductHTML);
+
+    // カテゴリオプションを追加
+    const categorySelect = document.getElementById(`normal-category-${newProductNumber}`);
+    const normalCategories = Object.keys(productsData);
+    normalCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categorySelect.appendChild(option);
+    });
+}
+
+function addBasicProduct() {
+    productCounter.basic++;
+    const newProductNumber = productCounter.basic;
+
+    const newProductHTML = `
+        <div class="product-form" id="basic-product-${newProductNumber}">
+            <div class="form-header">
+                <h3 class="form-title">基礎商品 ${newProductNumber}</h3>
+                <button class="remove-button" onclick="removeProduct('basic-product-${newProductNumber}')">
+                    ✕
+                </button>
+            </div>
+            <div class="basic-form-grid">
+                <div class="form-group">
+                    <label class="form-label" for="basic-category-${newProductNumber}">大項目選択</label>
+                    <select class="form-select" id="basic-category-${newProductNumber}" onchange="updateBasicItems(${newProductNumber})">
+                        <option value="">選択してください</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="basic-item-${newProductNumber}">小項目選択</label>
+                    <select class="form-select" id="basic-item-${newProductNumber}" disabled onchange="calculateBasicProduct(${newProductNumber})">
+                        <option value="">大項目を先に選択してください</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="basic-height-${newProductNumber}">基礎高</label>
+                    <select class="form-select" id="basic-height-${newProductNumber}" onchange="calculateBasicProduct(${newProductNumber})">
+                        <option value="">選択してください</option>
+                        <option value="30">30cm</option>
+                        <option value="40">40cm</option>
+                        <option value="50">50cm</option>
+                        <option value="60">60cm</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="basic-length-${newProductNumber}">長さ</label>
+                    <input type="number" class="form-input" id="basic-length-${newProductNumber}" min="0" step="1" onchange="calculateBasicProduct(${newProductNumber})">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="basic-discount-${newProductNumber}">値引</label>
+                    <input type="number" class="form-input" id="basic-discount-${newProductNumber}" min="0" step="1" onchange="calculateBasicProduct(${newProductNumber})">
+                </div>
+            </div>
+            <div class="calculation-result">
+                <div class="result-header">計算結果</div>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">税抜き</div>
+                        <div class="result-value ex-tax" id="basic-result-ex-${newProductNumber}">0円</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">税込み</div>
+                        <div class="result-value" id="basic-result-in-${newProductNumber}">0円</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const basicProductsContainer = document.getElementById('basic-products');
+    basicProductsContainer.insertAdjacentHTML('beforeend', newProductHTML);
+
+    // カテゴリオプションを追加
+    const categorySelect = document.getElementById(`basic-category-${newProductNumber}`);
+    const basicCategories = Object.keys(kisoProductsData);
+    basicCategories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categorySelect.appendChild(option);
+    });
+}
+
+function removeProduct(productId) {
+    const productElement = document.getElementById(productId);
+    if (productElement) {
+        productElement.remove();
+        updateSelectedProducts();
+    }
+}
+
+function calculateAll() {
+    // すべての商品を再計算
+    for (let i = 1; i <= productCounter.normal; i++) {
+        calculateNormalProduct(i);
+    }
+    for (let i = 1; i <= productCounter.basic; i++) {
+        calculateBasicProduct(i);
+    }
+}
+
+function clearAllProducts() {
+    if (confirm('すべての商品を削除しますか？')) {
+        // フォームをリセット
+        document.querySelectorAll('.product-form').forEach(form => {
+            if (form.id !== 'normal-product-1' && form.id !== 'basic-product-1') {
+                form.remove();
+            }
+        });
+
+        // カウンターをリセット
+        productCounter = { normal: 6, basic: 3 };
+
+        // フォームをクリア
+        document.querySelectorAll('select, input[type="number"]').forEach(input => {
+            input.value = '';
+            if (input.tagName === 'SELECT' && input.id.includes('item')) {
+                input.disabled = true;
+                input.innerHTML = '<option value="">大項目を先に選択してください</option>';
+            }
+        });
+
+        // 結果をリセット
+        document.querySelectorAll('.result-value').forEach(result => {
+            result.textContent = '0円';
+        });
+
+        // 選択商品リストをクリア
+        updateSelectedProducts();
+    }
+}
+
+// Excel連携機能
+function copyToExcel() {
+    if (selectedProducts.length === 0) {
+        alert('商品が選択されていません。商品を選択してから再度お試しください。');
+        return;
+    }
+
+    // データを準備
+    const excelData = {
+        timestamp: new Date().toISOString(),
+        items: [],
+        totalExTax: 0,
+        totalInTax: 0,
+        managementFee: document.getElementById('management-fee-checkbox').checked
+    };
+
+    // 選択された商品を配列に追加
+    selectedProducts.forEach(product => {
+        const price = parseFloat(product.exTax.replace(/[^\d]/g, '')) || 0;
+        
+        // 商品名の構築（小項目名 + 値引き情報）
+        let productName = product.item;
+        if (product.discount > 0) {
+            if (product.discount < 100) {
+                // 2桁以下は%として表示
+                productName += `▲${product.discount}%`;
+            } else {
+                // 3桁以上は金額として表示
+                productName += `▲${product.discount.toLocaleString()}円`;
+            }
+        }
+        
+        excelData.items.push({
+            category: product.category,
+            item: productName,
+            type: product.type === 'normal' ? '通常商品' : '基礎商品',
+            quantity: product.quantity || product.length,
+            height: product.height || '',
+            discount: product.discount || 0,
+            amount: price
+        });
+        excelData.totalExTax += price;
+    });
+
+    // 管理費を追加
+    if (excelData.managementFee) {
+        excelData.totalExTax += 20000;
+    }
+
+    excelData.totalInTax = Math.floor(excelData.totalExTax * 1.1);
+
+    // クリップボード用のテキスト形式を作成（税抜金額を送信）
+    const clipboardText = createClipboardText(excelData);
+
+    // デバッグ用：クリップボードの内容を確認
+    console.log('クリップボードにコピーする内容:', clipboardText);
+    console.log('クリップボードの長さ:', clipboardText.length);
+    
+    // クリップボードにコピー
+    navigator.clipboard.writeText(clipboardText).then(() => {
+        // デバッグ用：アラートで内容を確認
+        alert('クリップボードにコピーしました:\n' + 
+              '長さ: ' + clipboardText.length + '文字\n' +
+              '内容（最初の200文字）:\n' + clipboardText.substring(0, 200) + '...');
+        showCopyStatus();
+    }).catch(err => {
+        console.error('クリップボードへのコピーに失敗しました:', err);
+        alert('クリップボードへのコピーに失敗しました。ブラウザの設定を確認してください。');
+    });
+}
+
+function createClipboardText(data) {
+    // VBAで解析しやすい形式でテキストを作成
+    let clipboardText = '';
+    
+    // 商品名（・区切り）
+    let productNames = [];
+    data.items.forEach(item => {
+        productNames.push(item.item);
+    });
+    
+    // 管理費がある場合は最後に「管有」を追加
+    if (data.managementFee) {
+        productNames.push('管有');
+    }
+    
+    clipboardText += productNames.join('・') + '\n';
+    
+    // 数量（スラッシュ区切り）
+    let quantities = [];
+    data.items.forEach(item => {
+        quantities.push(item.quantity);
+    });
+    clipboardText += quantities.join('/') + '\n';
+    
+    // 金額（3桁区切り）
+    clipboardText += data.totalExTax.toLocaleString() + '\n';
+    
+    // JSONデータも含める（VBA用）
+    clipboardText += `PRICE_SIM_START|${JSON.stringify(data)}|PRICE_SIM_END`;
+    
+    return clipboardText;
+}
+
+function showCopyStatus() {
+    const statusElement = document.getElementById('copy-status');
+    statusElement.style.display = 'block';
+    
+    // 3秒後に非表示
+    setTimeout(() => {
+        statusElement.style.display = 'none';
+    }, 3000);
+}

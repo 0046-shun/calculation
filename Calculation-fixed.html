@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>価格シミュレータ - 修正版</title>
+    <link rel="stylesheet" href="./Calculation-fixed.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <h1 class="app-title">価格シミュレータ</h1>
+            <div class="nav-buttons">
+                <button class="nav-button" onclick="window.location.href='./ReverseCheck.html'">
+                    🔄 逆計算チェック
+                </button>
+                <button class="nav-button admin-button" onclick="window.location.href='./admin.html'">
+                    ⚙️ 管理画面
+                </button>
+            </div>
+        </header>
+
+        <!-- 左パネル - 計算結果 -->
+        <aside class="calculation-panel">
+            <div class="panel-header">
+                <div class="panel-icon">💰</div>
+                <h2 class="panel-title">選択商品計算</h2>
+                <button class="clear-button" id="clear-all-button">
+                    🗑️ 全削除
+                </button>
+            </div>
+
+            <!-- 選択商品リスト -->
+            <div class="selected-products">
+                <ul class="product-list" id="selected-products-list">
+                    <li class="empty-state">
+                        商品を選択すると、ここに表示されます
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 管理費 -->
+            <div class="management-fee">
+                <input type="checkbox" id="management-fee-checkbox" checked>
+                <label for="management-fee-checkbox">
+                    一般管理費 (20,000円)
+                </label>
+            </div>
+
+            <!-- 合計金額 -->
+            <div class="total-section">
+                <div class="total-row">
+                    <span class="total-label">税抜き合計</span>
+                    <span class="total-amount" id="total-ex-tax">0円</span>
+                </div>
+                <div class="total-row">
+                    <span class="total-label">税込み合計</span>
+                    <span class="total-amount large" id="total-in-tax">0円</span>
+                </div>
+            </div>
+
+            <!-- アクションボタン -->
+            <div class="action-buttons">
+                <button class="action-button secondary" id="add-product-button">
+                    ➕ 商品追加
+                </button>
+                <button class="action-button primary" id="calculate-button">
+                    🧮 計算実行
+                </button>
+            </div>
+
+            <!-- Excel連携ボタン -->
+            <div class="excel-integration">
+                <button class="action-button excel-button" id="copy-to-excel-button">
+                    📋 Excelに送る
+                </button>
+                <div class="copy-status" id="copy-status" style="display: none;">
+                    ✅ データをコピーしました！Excelで「データ取込」ボタンを押してください
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右パネル - 商品選択 -->
+        <main class="product-selection-panel">
+            <!-- タブナビゲーション -->
+            <div class="tab-navigation">
+                <button class="tab-button active" data-tab="normal-products" id="normal-tab">
+                    通常商品
+                </button>
+                <button class="tab-button" data-tab="basic-products" id="basic-tab">
+                    基礎商品
+                </button>
+            </div>
+
+            <!-- 通常商品タブ -->
+            <div id="normal-products" class="tab-content active">
+                <!-- 通常商品フォーム1-6 -->
+                <div class="product-form" id="normal-product-1">
+                    <div class="form-header">
+                        <h3 class="form-title">通常商品 1</h3>
+                        <button class="remove-button" onclick="removeProduct('normal-product-1')" style="display: none;">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="normal-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="normal-category-1">大項目選択</label>
+                            <select class="form-select" id="normal-category-1" onchange="updateNormalItems(1)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-item-1">小項目選択</label>
+                            <select class="form-select" id="normal-item-1" disabled onchange="calculateNormalProduct(1)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-quantity-1">数量</label>
+                            <input type="number" class="form-input" id="normal-quantity-1" min="0" step="1" onchange="calculateNormalProduct(1)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-discount-1">値引</label>
+                            <input type="number" class="form-input" id="normal-discount-1" min="0" step="1" onchange="calculateNormalProduct(1)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="normal-result-ex-1">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="normal-result-in-1">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="normal-product-2">
+                    <div class="form-header">
+                        <h3 class="form-title">通常商品 2</h3>
+                        <button class="remove-button" onclick="removeProduct('normal-product-2')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="normal-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="normal-category-2">大項目選択</label>
+                            <select class="form-select" id="normal-category-2" onchange="updateNormalItems(2)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-item-2">小項目選択</label>
+                            <select class="form-select" id="normal-item-2" disabled onchange="calculateNormalProduct(2)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-quantity-2">数量</label>
+                            <input type="number" class="form-input" id="normal-quantity-2" min="0" step="1" onchange="calculateNormalProduct(2)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-discount-2">値引</label>
+                            <input type="number" class="form-input" id="normal-discount-2" min="0" step="1" onchange="calculateNormalProduct(2)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="normal-result-ex-2">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="normal-result-in-2">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="normal-product-3">
+                    <div class="form-header">
+                        <h3 class="form-title">通常商品 3</h3>
+                        <button class="remove-button" onclick="removeProduct('normal-product-3')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="normal-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="normal-category-3">大項目選択</label>
+                            <select class="form-select" id="normal-category-3" onchange="updateNormalItems(3)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-item-3">小項目選択</label>
+                            <select class="form-select" id="normal-item-3" disabled onchange="calculateNormalProduct(3)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-quantity-3">数量</label>
+                            <input type="number" class="form-input" id="normal-quantity-3" min="0" step="1" onchange="calculateNormalProduct(3)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-discount-3">値引</label>
+                            <input type="number" class="form-input" id="normal-discount-3" min="0" step="1" onchange="calculateNormalProduct(3)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="normal-result-ex-3">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="normal-result-in-3">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="normal-product-4">
+                    <div class="form-header">
+                        <h3 class="form-title">通常商品 4</h3>
+                        <button class="remove-button" onclick="removeProduct('normal-product-4')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="normal-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="normal-category-4">大項目選択</label>
+                            <select class="form-select" id="normal-category-4" onchange="updateNormalItems(4)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-item-4">小項目選択</label>
+                            <select class="form-select" id="normal-item-4" disabled onchange="calculateNormalProduct(4)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-quantity-4">数量</label>
+                            <input type="number" class="form-input" id="normal-quantity-4" min="0" step="1" onchange="calculateNormalProduct(4)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-discount-4">値引</label>
+                            <input type="number" class="form-input" id="normal-discount-4" min="0" step="1" onchange="calculateNormalProduct(4)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="normal-result-ex-4">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="normal-result-in-4">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="normal-product-5">
+                    <div class="form-header">
+                        <h3 class="form-title">通常商品 5</h3>
+                        <button class="remove-button" onclick="removeProduct('normal-product-5')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="normal-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="normal-category-5">大項目選択</label>
+                            <select class="form-select" id="normal-category-5" onchange="updateNormalItems(5)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-item-5">小項目選択</label>
+                            <select class="form-select" id="normal-item-5" disabled onchange="calculateNormalProduct(5)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-quantity-5">数量</label>
+                            <input type="number" class="form-input" id="normal-quantity-5" min="0" step="1" onchange="calculateNormalProduct(5)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-discount-5">値引</label>
+                            <input type="number" class="form-input" id="normal-discount-5" min="0" step="1" onchange="calculateNormalProduct(5)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="normal-result-ex-5">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="normal-result-in-5">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="normal-product-6">
+                    <div class="form-header">
+                        <h3 class="form-title">通常商品 6</h3>
+                        <button class="remove-button" onclick="removeProduct('normal-product-6')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="normal-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="normal-category-6">大項目選択</label>
+                            <select class="form-select" id="normal-category-6" onchange="updateNormalItems(6)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-item-6">小項目選択</label>
+                            <select class="form-select" id="normal-item-6" disabled onchange="calculateNormalProduct(6)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-quantity-6">数量</label>
+                            <input type="number" class="form-input" id="normal-quantity-6" min="0" step="1" onchange="calculateNormalProduct(6)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="normal-discount-6">値引</label>
+                            <input type="number" class="form-input" id="normal-discount-6" min="0" step="1" onchange="calculateNormalProduct(6)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="normal-result-ex-6">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="normal-result-in-6">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 基礎商品タブ -->
+            <div id="basic-products" class="tab-content">
+                <!-- 基礎商品フォーム1-3 -->
+                <div class="product-form" id="basic-product-1">
+                    <div class="form-header">
+                        <h3 class="form-title">基礎商品 1</h3>
+                        <button class="remove-button" onclick="removeProduct('basic-product-1')" style="display: none;">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="basic-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="basic-category-1">大項目選択</label>
+                            <select class="form-select" id="basic-category-1" onchange="updateBasicItems(1)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-item-1">小項目選択</label>
+                            <select class="form-select" id="basic-item-1" disabled onchange="calculateBasicProduct(1)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="basic-form-grid-row2">
+                        <div class="form-group">
+                            <label class="form-label" for="basic-height-1">基礎高</label>
+                            <select class="form-select" id="basic-height-1" onchange="calculateBasicProduct(1)">
+                                <option value="">選択してください</option>
+                                <option value="30">30cm</option>
+                                <option value="40">40cm</option>
+                                <option value="50">50cm</option>
+                                <option value="60">60cm</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-length-1">長さ</label>
+                            <input type="number" class="form-input" id="basic-length-1" min="0" step="1" onchange="calculateBasicProduct(1)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-discount-1">値引</label>
+                            <input type="number" class="form-input" id="basic-discount-1" min="0" step="1" onchange="calculateBasicProduct(1)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="basic-result-ex-1">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="basic-result-in-1">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="basic-product-2">
+                    <div class="form-header">
+                        <h3 class="form-title">基礎商品 2</h3>
+                        <button class="remove-button" onclick="removeProduct('basic-product-2')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="basic-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="basic-category-2">大項目選択</label>
+                            <select class="form-select" id="basic-category-2" onchange="updateBasicItems(2)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-item-2">小項目選択</label>
+                            <select class="form-select" id="basic-item-2" disabled onchange="calculateBasicProduct(2)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="basic-form-grid-row2">
+                        <div class="form-group">
+                            <label class="form-label" for="basic-height-2">基礎高</label>
+                            <select class="form-select" id="basic-height-2" onchange="calculateBasicProduct(2)">
+                                <option value="">選択してください</option>
+                                <option value="30">30cm</option>
+                                <option value="40">40cm</option>
+                                <option value="50">50cm</option>
+                                <option value="60">60cm</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-length-2">長さ</label>
+                            <input type="number" class="form-input" id="basic-length-2" min="0" step="1" onchange="calculateBasicProduct(2)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-discount-2">値引</label>
+                            <input type="number" class="form-input" id="basic-discount-2" min="0" step="1" onchange="calculateBasicProduct(2)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="basic-result-ex-2">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="basic-result-in-2">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-form" id="basic-product-3">
+                    <div class="form-header">
+                        <h3 class="form-title">基礎商品 3</h3>
+                        <button class="remove-button" onclick="removeProduct('basic-product-3')">
+                            ✕
+                        </button>
+                    </div>
+                    <div class="basic-form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="basic-category-3">大項目選択</label>
+                            <select class="form-select" id="basic-category-3" onchange="updateBasicItems(3)">
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-item-3">小項目選択</label>
+                            <select class="form-select" id="basic-item-3" disabled onchange="calculateBasicProduct(3)">
+                                <option value="">大項目を先に選択してください</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="basic-form-grid-row2">
+                        <div class="form-group">
+                            <label class="form-label" for="basic-height-3">基礎高</label>
+                            <select class="form-select" id="basic-height-3" onchange="calculateBasicProduct(3)">
+                                <option value="">選択してください</option>
+                                <option value="30">30cm</option>
+                                <option value="40">40cm</option>
+                                <option value="50">50cm</option>
+                                <option value="60">60cm</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-length-3">長さ</label>
+                            <input type="number" class="form-input" id="basic-length-3" min="0" step="1" onchange="calculateBasicProduct(3)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="basic-discount-3">値引</label>
+                            <input type="number" class="form-input" id="basic-discount-3" min="0" step="1" onchange="calculateBasicProduct(3)">
+                        </div>
+                    </div>
+                    <div class="calculation-result">
+                        <div class="result-header">計算結果</div>
+                        <div class="result-grid">
+                            <div class="result-item">
+                                <div class="result-label">税抜き</div>
+                                <div class="result-value ex-tax" id="basic-result-ex-3">0円</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">税込み</div>
+                                <div class="result-value" id="basic-result-in-3">0円</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="./data.js"></script>
+    <script src="./core_data.js"></script>
+    <script src="./core_pricing.js"></script>
+    <script src="./core_utils.js"></script>
+    <script src="./Calculation-fixed.js"></script>
+</body>
+</html>

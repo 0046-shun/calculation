@@ -13,6 +13,37 @@
 - **価格計算表**: https://0046-shun.github.io/calculation/Calculation.html
 - **逆計算チェック**: https://0046-shun.github.io/calculation/ReverseCheck.html
 
+## 🚀 開発環境
+
+### 必要な環境
+- Node.js 18+
+- npm 9+
+
+### セットアップ
+```bash
+# 依存関係のインストール
+npm install
+
+# 開発サーバー起動
+npm run dev
+
+# テスト実行
+npm run test:run
+
+# テストUI起動
+npm run test:ui
+
+# 本番ビルド
+npm run build
+```
+
+### 利用可能なコマンド
+- `npm run dev` - Vite開発サーバー起動
+- `npm run build` - 本番ビルド
+- `npm run test:run` - テスト実行
+- `npm run test:ui` - テストUI起動
+- `npm run type-check` - TypeScript型チェック
+
 ---
 
 ## 📊 価格計算表 (Calculation.html)
@@ -123,9 +154,12 @@ Excel形式:
 ## 🛠️ 技術仕様
 
 ### 使用技術
-- **フロントエンド**: HTML5, CSS3, JavaScript (ES6+)
+- **フロントエンド**: HTML5, CSS3, TypeScript
+- **ビルドツール**: Vite
+- **テスト**: Vitest
 - **スタイリング**: レスポンシブデザイン対応
 - **データ**: data.js / Firestore による商品データ管理（Feature Flag で切替）
+- **ルールエンジン**: 宣言的価格ルールシステム
 
 ---
 
@@ -184,16 +218,33 @@ window.FIREBASE_CONFIG = {
 ### ファイル構成
 ```
 calculation/
+├── src/                    # TypeScriptソースコード
+│   ├── index.ts           # メインエントリーポイント
+│   ├── types.ts           # 型定義
+│   ├── enhanced-rules.ts  # 強化されたルールエンジン
+│   ├── rule-examples.ts   # 実用的なルール例
+│   ├── core-pricing.ts    # 価格計算ロジック
+│   ├── core-data.ts       # データ処理
+│   └── core-utils.ts      # ユーティリティ関数
+├── test/                   # テストファイル
+│   ├── setup.ts           # テストセットアップ
+│   ├── core-pricing.test.ts
+│   ├── enhanced-rules.test.ts
+│   └── core-utils.test.ts
+├── legacy/                 # レガシーJavaScriptファイル
+├── dist/                   # ビルド成果物
+├── docs/                   # ドキュメント
+├── img/                    # 画像ファイル
 ├── index.html              # ランディングページ
 ├── Calculation.html        # 価格計算表
 ├── Calculation.css         # 価格計算表スタイル
-├── script.js              # 価格計算ロジック
 ├── ReverseCheck.html      # 逆計算チェックツール
 ├── ReverseCheck.css       # 逆計算チェックスタイル
-├── reverse_check.js       # 逆計算チェックロジック
-├── data.js               # 商品データベース
+├── admin.html             # 管理者画面
+├── package.json           # 依存関係
+├── tsconfig.json          # TypeScript設定
+├── vite.config.ts         # Vite設定
 └── README.md             # このドキュメント
-
 ```
 
 ### ブラウザ対応

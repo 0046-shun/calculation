@@ -1,0 +1,239 @@
+' VBAユーザーフォーム用サンプルコード
+' 価格シミュレーターからのデータ取込機能
+
+' ユーザーフォームに以下のコントロールを配置してください：
+' - btnImportData: コマンドボタン（「データ取込」）
+' - txtProduct1, txtProduct2, txtProduct3...: テキストボックス（商品名用）
+' - txtQuantity1, txtQuantity2, txtQuantity3...: テキストボックス（数量用）
+' - txtAmount1, txtAmount2, txtAmount3...: テキストボックス（金額用）
+' - txtTotal: テキストボックス（合計金額用）
+
+Private Sub btnImportData_Click()
+    Dim clipText As String
+    Dim jsonText As String
+    Dim startPos As Integer, endPos As Integer
+    
+    ' クリップボードからデータを取得
+    clipText = GetClipboardText()
+    
+    ' 特定の区切り文字で囲まれたデータを抽出
+    startPos = InStr(clipText, "PRICE_SIM_START|")
+    endPos = InStr(clipText, "|PRICE_SIM_END")
+    
+    If startPos > 0 And endPos > 0 Then
+        jsonText = Mid(clipText, startPos + 16, endPos - startPos - 16)
+        Call ProcessImportedData(jsonText)
+        MsgBox "データの取込が完了しました。", vbInformation
+    Else
+        MsgBox "価格シミュレーターからのデータが見つかりません。" & vbCrLf & _
+               "Webアプリで「Excelに送る」ボタンを押してから、再度お試しください。", vbExclamation
+    End If
+End Sub
+
+Private Sub ProcessImportedData(jsonText As String)
+    ' JSONライブラリを使わない簡易パース
+    Dim items As String
+    Dim total As String
+    Dim managementFee As String
+    
+    ' 簡易的な文字列解析でデータを抽出
+    Call ParseSimulationData(jsonText, items, total, managementFee)
+    
+    ' ユーザーフォームに反映
+    Call PopulateFormWithData(items, total, managementFee)
+End Sub
+
+Private Sub ParseSimulationData(jsonText As String, ByRef items As String, ByRef total As String, ByRef managementFee As String)
+    ' JSONを簡易パース（VBA-JSONライブラリ不要）
+    Dim pos As Integer
+    Dim itemCount As Integer
+    
+    ' 合計金額を抽出
+    pos = InStr(jsonText, """totalExTax"":")
+    If pos > 0 Then
+        Dim totalStart As Integer
+        totalStart = InStr(pos, jsonText, ":") + 1
+        Dim totalEnd As Integer
+        totalEnd = InStr(totalStart, jsonText, ",")
+        If totalEnd = 0 Then totalEnd = InStr(totalStart, jsonText, "}")
+        total = Mid(jsonText, totalStart, totalEnd - totalStart)
+        total = Replace(total, " ", "")
+    End If
+    
+    ' 管理費フラグを抽出
+    pos = InStr(jsonText, """managementFee"":")
+    If pos > 0 Then
+        Dim feeStart As Integer
+        feeStart = InStr(pos, jsonText, ":") + 1
+        Dim feeEnd As Integer
+        feeEnd = InStr(feeStart, jsonText, ",")
+        If feeEnd = 0 Then feeEnd = InStr(feeStart, jsonText, "}")
+        managementFee = Mid(jsonText, feeStart, feeEnd - feeStart)
+        managementFee = Replace(managementFee, " ", "")
+    End If
+    
+    ' 商品データを抽出（簡易版）
+    items = ExtractItemsFromJson(jsonText)
+End Sub
+
+Private Function ExtractItemsFromJson(jsonText As String) As String
+    ' 商品データを抽出する簡易関数
+    Dim pos As Integer
+    Dim itemsStart As Integer
+    Dim itemsEnd As Integer
+    
+    ' "items": の位置を探す
+    pos = InStr(jsonText, """items"":")
+    If pos > 0 Then
+        itemsStart = InStr(pos, jsonText, "[") + 1
+        itemsEnd = InStr(itemsStart, jsonText, "]")
+        ExtractItemsFromJson = Mid(jsonText, itemsStart, itemsEnd - itemsStart)
+    Else
+        ExtractItemsFromJson = ""
+    End If
+End Function
+
+Private Sub PopulateFormWithData(items As String, total As String, managementFee As String)
+    ' フォームをクリア
+    Call ClearForm
+    
+    ' 商品データを解析してフォームに反映
+    Dim itemArray() As String
+    Dim i As Integer
+    
+    ' 商品データを配列に分割（簡易版）
+    If Len(items) > 0 Then
+        itemArray = Split(items, "},{")
+        
+        For i = 0 To UBound(itemArray)
+            If i >= 6 Then Exit For ' 最大6商品まで
+            
+            ' 各商品のデータを抽出
+            Dim category As String, itemName As String, quantity As String, amount As String
+            
+            Call ExtractItemData(itemArray(i), category, itemName, quantity, amount)
+            
+            ' フォームに反映
+            Call SetFormField(i + 1, category & " - " & itemName, quantity, amount)
+        Next i
+    End If
+    
+    ' 合計金額を設定
+    txtTotal.Text = total
+    
+    ' 管理費の表示（必要に応じて）
+    If managementFee = "true" Then
+        ' 管理費が含まれている場合の処理
+    End If
+End Sub
+
+Private Sub ExtractItemData(itemData As String, ByRef category As String, ByRef itemName As String, ByRef quantity As String, ByRef amount As String)
+    ' 商品データから各項目を抽出
+    Dim pos As Integer
+    
+    ' カテゴリを抽出
+    pos = InStr(itemData, """category"":""")
+    If pos > 0 Then
+        Dim catStart As Integer
+        catStart = pos + 12
+        Dim catEnd As Integer
+        catEnd = InStr(catStart, itemData, """")
+        category = Mid(itemData, catStart, catEnd - catStart)
+    End If
+    
+    ' 商品名を抽出
+    pos = InStr(itemData, """item"":""")
+    If pos > 0 Then
+        Dim itemStart As Integer
+        itemStart = pos + 8
+        Dim itemEnd As Integer
+        itemEnd = InStr(itemStart, itemData, """")
+        itemName = Mid(itemData, itemStart, itemEnd - itemStart)
+    End If
+    
+    ' 数量を抽出
+    pos = InStr(itemData, """quantity"":")
+    If pos > 0 Then
+        Dim qtyStart As Integer
+        qtyStart = InStr(pos, itemData, ":") + 1
+        Dim qtyEnd As Integer
+        qtyEnd = InStr(qtyStart, itemData, ",")
+        If qtyEnd = 0 Then qtyEnd = InStr(qtyStart, itemData, "}")
+        quantity = Mid(itemData, qtyStart, qtyEnd - qtyStart)
+        quantity = Replace(quantity, " ", "")
+    End If
+    
+    ' 金額を抽出
+    pos = InStr(itemData, """amount"":")
+    If pos > 0 Then
+        Dim amtStart As Integer
+        amtStart = InStr(pos, itemData, ":") + 1
+        Dim amtEnd As Integer
+        amtEnd = InStr(amtStart, itemData, ",")
+        If amtEnd = 0 Then amtEnd = InStr(amtStart, itemData, "}")
+        amount = Mid(itemData, amtStart, amtEnd - amtStart)
+        amount = Replace(amount, " ", "")
+    End If
+End Sub
+
+Private Sub SetFormField(index As Integer, productName As String, quantity As String, amount As String)
+    ' 指定されたインデックスのフォームフィールドに値を設定
+    Select Case index
+        Case 1
+            txtProduct1.Text = productName
+            txtQuantity1.Text = quantity
+            txtAmount1.Text = amount
+        Case 2
+            txtProduct2.Text = productName
+            txtQuantity2.Text = quantity
+            txtAmount2.Text = amount
+        Case 3
+            txtProduct3.Text = productName
+            txtQuantity3.Text = quantity
+            txtAmount3.Text = amount
+        Case 4
+            txtProduct4.Text = productName
+            txtQuantity4.Text = quantity
+            txtAmount4.Text = amount
+        Case 5
+            txtProduct5.Text = productName
+            txtQuantity5.Text = quantity
+            txtAmount5.Text = amount
+        Case 6
+            txtProduct6.Text = productName
+            txtQuantity6.Text = quantity
+            txtAmount6.Text = amount
+    End Select
+End Sub
+
+Private Sub ClearForm()
+    ' フォームをクリア
+    txtProduct1.Text = ""
+    txtQuantity1.Text = ""
+    txtAmount1.Text = ""
+    txtProduct2.Text = ""
+    txtQuantity2.Text = ""
+    txtAmount2.Text = ""
+    txtProduct3.Text = ""
+    txtQuantity3.Text = ""
+    txtAmount3.Text = ""
+    txtProduct4.Text = ""
+    txtQuantity4.Text = ""
+    txtAmount4.Text = ""
+    txtProduct5.Text = ""
+    txtQuantity5.Text = ""
+    txtAmount5.Text = ""
+    txtProduct6.Text = ""
+    txtQuantity6.Text = ""
+    txtAmount6.Text = ""
+    txtTotal.Text = ""
+End Sub
+
+Private Function GetClipboardText() As String
+    ' クリップボードからテキストを取得
+    Dim dataObj As Object
+    Set dataObj = CreateObject("htmlfile")
+    With dataObj.ParentWindow.clipboardData
+        GetClipboardText = .getData("text")
+    End With
+End Function

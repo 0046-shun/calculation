@@ -56,10 +56,20 @@
                 <label>単価</label><input id="unitPrice" type="number" placeholder="例: 1500" />
                 <label>基本数量</label><input id="basicQty" type="number" placeholder="例: 40" />
                 <select id="excessCalc">
-                    <option value="overOnly">超過のみ加算</option>
-                    <option value="perQty">数量分加算</option>
-                    <option value="none">加算なし</option>
+                    <option value="overOnly">超過のみ加算（基本数量を超えた分のみ単価×数量）</option>
+                    <option value="perQty">数量分加算（単価×全数量）</option>
+                    <option value="none">加算なし（基本価格のみ）</option>
                 </select>
+            </div>
+            <div id="calculation-examples" class="row" style="margin-top:10px; display:none;">
+                <div style="background:#f0f9ff; border:1px solid #0ea5e9; border-radius:6px; padding:12px; width:100%;">
+                    <div style="font-weight:600; color:#0369a1; margin-bottom:8px;">計算例（数量: 50の場合）</div>
+                    <div style="font-size:14px; color:#0c4a6e;">
+                        <div><strong>超過のみ加算:</strong> 基本価格 + (50-40) × 単価 = 基本価格 + 10 × 単価</div>
+                        <div><strong>数量分加算:</strong> 基本価格 + 50 × 単価</div>
+                        <div><strong>加算なし:</strong> 基本価格のみ</div>
+                    </div>
+                </div>
             </div>
             <div id="add-kiso" class="row" style="margin-top:10px; display:none;">
                 <div class="muted" style="margin-bottom:6px">高さ別のJSON（例）:</div>
@@ -124,10 +134,20 @@
                     <label>単価</label><input id="edit-unitPrice" type="number" />
                     <label>基本数量</label><input id="edit-basicQty" type="number" />
                     <select id="edit-excessCalc">
-                        <option value="overOnly">超過のみ加算</option>
-                        <option value="perQty">数量分加算</option>
-                        <option value="none">加算なし</option>
+                        <option value="overOnly">超過のみ加算（基本数量を超えた分のみ単価×数量）</option>
+                        <option value="perQty">数量分加算（単価×全数量）</option>
+                        <option value="none">加算なし（基本価格のみ）</option>
                     </select>
+                </div>
+                <div id="edit-calculation-examples" class="row" style="margin-top:10px; display:none;">
+                    <div style="background:#f0f9ff; border:1px solid #0ea5e9; border-radius:6px; padding:12px; width:100%;">
+                        <div style="font-weight:600; color:#0369a1; margin-bottom:8px;">計算例（数量: 50の場合）</div>
+                        <div style="font-size:14px; color:#0c4a6e;">
+                            <div><strong>超過のみ加算:</strong> 基本価格 + (50-40) × 単価 = 基本価格 + 10 × 単価</div>
+                            <div><strong>数量分加算:</strong> 基本価格 + 50 × 単価</div>
+                            <div><strong>加算なし:</strong> 基本価格のみ</div>
+                        </div>
+                    </div>
                 </div>
                 <div id="edit-kiso" class="row" style="margin-top:10px; display:none;">
                     <div class="muted" style="margin-bottom:6px">高さ別のJSON</div>
@@ -201,6 +221,7 @@
     function toggleAddType(type) {
         document.getElementById('add-normal').style.display = (type === 'normal') ? '' : 'none';
         document.getElementById('add-kiso').style.display = (type === 'kiso') ? '' : 'none';
+        document.getElementById('calculation-examples').style.display = (type === 'normal') ? '' : 'none';
     }
     Array.from(document.querySelectorAll('input[name="add-type"]')).forEach(r => {
         r.onchange = () => toggleAddType(r.value);
@@ -350,6 +371,7 @@
     function toggleEditType(type) {
         document.getElementById('edit-normal').style.display = (type === 'normal') ? '' : 'none';
         document.getElementById('edit-kiso').style.display = (type === 'kiso') ? '' : 'none';
+        document.getElementById('edit-calculation-examples').style.display = (type === 'normal') ? '' : 'none';
     }
     function bindTypeRadios() {
         Array.from(document.querySelectorAll('input[name="edit-type"]')).forEach(r => {
