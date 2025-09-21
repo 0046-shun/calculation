@@ -149,10 +149,15 @@ function calculateNormalProduct(productNumber) {
 
     // 価格計算
     let exTax = productData.base || 0;
-    if (quantity > productData.areaThreshold) {
-        exTax += (quantity - productData.areaThreshold) * productData.price;
+    if (productData.areaThreshold !== undefined) {
+        // areaThresholdがある場合：超過分のみ加算
+        if (quantity > productData.areaThreshold) {
+            exTax += (quantity - productData.areaThreshold) * productData.price;
+        }
+    } else {
+        // areaThresholdがない場合：全数量に単価を適用
+        exTax += quantity * productData.price;
     }
-    // 基本数量以下の場合は基本価格のみ（追加料金なし）
     
     // 値引き計算（2桁は%、3桁以上は金額）
     let discountAmount = 0;
@@ -634,13 +639,15 @@ function copyToExcel() {
     // デバッグ用：クリップボードの内容を確認
     console.log('クリップボードにコピーする内容:', clipboardText);
     console.log('クリップボードの長さ:', clipboardText.length);
+    console.log('改行文字の確認:', clipboardText.includes('\r\n') ? 'CRLFあり' : 'CRLFなし');
     
     // クリップボードにコピー
     navigator.clipboard.writeText(clipboardText).then(() => {
         // デバッグ用：アラートで内容を確認
         alert('クリップボードにコピーしました:\n' + 
               '長さ: ' + clipboardText.length + '文字\n' +
-              '内容（最初の200文字）:\n' + clipboardText.substring(0, 200) + '...');
+              '改行数: ' + (clipboardText.split('\r\n').length - 1) + '個\n' +
+              '内容（全体）:\n' + clipboardText);
         showCopyStatus();
     }).catch(err => {
         console.error('クリップボードへのコピーに失敗しました:', err);
@@ -649,7 +656,7 @@ function copyToExcel() {
 }
 
 function createClipboardText(data) {
-    // VBAで解析しやすい形式でテキストを作成
+    // VBAで解析しやすい形式でテキストを作成（シンプル版）
     let clipboardText = '';
     
     // 商品名（・区切り）
@@ -663,20 +670,17 @@ function createClipboardText(data) {
         productNames.push('管有');
     }
     
-    clipboardText += productNames.join('・') + '\n';
+    clipboardText += productNames.join('・') + ',';
     
     // 数量（スラッシュ区切り）
     let quantities = [];
     data.items.forEach(item => {
         quantities.push(item.quantity);
     });
-    clipboardText += quantities.join('/') + '\n';
+    clipboardText += quantities.join('/') + ',';
     
-    // 金額（3桁区切り）
-    clipboardText += data.totalExTax.toLocaleString() + '\n';
-    
-    // JSONデータも含める（VBA用）
-    clipboardText += `PRICE_SIM_START|${JSON.stringify(data)}|PRICE_SIM_END`;
+    // 金額（カンマなし）
+    clipboardText += data.totalExTax.toString();
     
     return clipboardText;
 }
