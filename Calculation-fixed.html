@@ -30,7 +30,7 @@
                 <div class="panel-icon">💰</div>
                 <h2 class="panel-title">選択商品計算</h2>
                 <button class="clear-button" id="clear-all-button">
-                    🗑️ 全削除
+                    🗑️ リセット
                 </button>
             </div>
 
@@ -541,6 +541,20 @@
     <!-- JavaScript -->
     <script src="./data.js"></script>
     <script src="./core_data.js"></script>
+    <!-- Firebase SDK (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script>window.FIREBASE_CONFIG = window.FIREBASE_CONFIG || {};</script>
+    <script src="./firebase-config.js"></script>
+    <script>window.FEATURE_USE_FIRESTORE = true;</script>
+    <script src="./core_data_fetch.js"></script>
+    <script src="./core_rules.js"></script>
+    <script>
+      // ルール自動読み込み（Firestore から）
+      if (window.CoreRules && window.FEATURE_USE_FIRESTORE) {
+        CoreRules.autoLoad().then(function(r){ console.log('rules loaded', r.loaded); });
+      }
+    </script>
     <script src="./core_pricing.js"></script>
     <script src="./core_utils.js"></script>
     <script src="./Calculation-fixed.js"></script>

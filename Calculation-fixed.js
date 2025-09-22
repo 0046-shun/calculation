@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     // 商品データを読み込み
     loadProductData();
+    // Firestore からの読み込み（成功時は core_data_fetch 側で再度 loadProductData を呼ぶ）
+    try {
+        if (window.FEATURE_USE_FIRESTORE && window.CoreDataFetch && typeof window.CoreDataFetch.loadData === 'function') {
+            window.CoreDataFetch.loadData();
+        }
+    } catch (_) { /* ignore */ }
     
     // タブ切り替えを設定
     setupTabNavigation();
@@ -36,12 +42,39 @@ function setupEventListeners() {
     document.getElementById('copy-to-excel-button').addEventListener('click', copyToExcel);
 }
 
+// 現在フォーム上で選択中の商品（通常/基礎）から、ルール判定用の文脈を構築
+function buildSelectedContext() {
+    const ctx = [];
+    try {
+        for (let i = 1; i <= productCounter.normal; i++) {
+            const c = (document.getElementById(`normal-category-${i}`) || {}).value;
+            const it = (document.getElementById(`normal-item-${i}`) || {}).value;
+            if (c && it) ctx.push({ category: c, item: it });
+        }
+        for (let i = 1; i <= productCounter.basic; i++) {
+            const c = (document.getElementById(`basic-category-${i}`) || {}).value;
+            const it = (document.getElementById(`basic-item-${i}`) || {}).value;
+            if (c && it) ctx.push({ category: c, item: it });
+        }
+    } catch (_) { /* ignore */ }
+    return ctx;
+}
+
 function loadProductData() {
     // 通常商品のカテゴリを読み込み（1-6）
-    const normalCategories = Object.keys(productsData);
+    const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+    const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+    const normalCategories = Object.keys(productsData).sort((a,b)=>{
+        const ia = orderMap.has(a)?orderMap.get(a):Number.MAX_SAFE_INTEGER;
+        const ib = orderMap.has(b)?orderMap.get(b):Number.MAX_SAFE_INTEGER;
+        if (ia!==ib) return ia-ib;
+        return String(a).localeCompare(String(b));
+    });
     for (let i = 1; i <= 6; i++) {
         const normalCategorySelect = document.getElementById(`normal-category-${i}`);
         if (normalCategorySelect) {
+            // 既存をクリアしてから再生成
+            normalCategorySelect.innerHTML = '<option value="">選択してください</option>';
             normalCategories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
@@ -52,10 +85,17 @@ function loadProductData() {
     }
 
     // 基礎商品のカテゴリを読み込み（1-3）
-    const basicCategories = Object.keys(kisoProductsData);
+    const basicCategories = Object.keys(kisoProductsData).sort((a,b)=>{
+        const ia = orderMap.has(a)?orderMap.get(a):Number.MAX_SAFE_INTEGER;
+        const ib = orderMap.has(b)?orderMap.get(b):Number.MAX_SAFE_INTEGER;
+        if (ia!==ib) return ia-ib;
+        return String(a).localeCompare(String(b));
+    });
     for (let i = 1; i <= 3; i++) {
         const basicCategorySelect = document.getElementById(`basic-category-${i}`);
         if (basicCategorySelect) {
+            // 既存をクリアしてから再生成
+            basicCategorySelect.innerHTML = '<option value="">選択してください</option>';
             basicCategories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
@@ -97,7 +137,24 @@ function updateNormalItems(productNumber) {
     itemSelect.innerHTML = '<option value="">大項目を先に選択してください</option>';
     
     if (categorySelect.value) {
-        const items = Object.keys(productsData[categorySelect.value]);
+        const cat = categorySelect.value;
+        const siMap = (window.productsSortIndexMap && window.productsSortIndexMap[cat]) || null;
+        const items = Object.keys(productsData[cat]).sort((a,b)=>{
+            // 1) Firestore の sortIndex マップ
+            const sai = siMap && (typeof siMap[a] === 'number') ? siMap[a] : null;
+            const sbi = siMap && (typeof siMap[b] === 'number') ? siMap[b] : null;
+            if (sai!=null && sbi!=null) return sai - sbi;
+            if (sai!=null) return -1;
+            if (sbi!=null) return 1;
+            // 2) productsData 内の _sort（後方互換）
+            const sa = (productsData[cat][a]||{})._sort;
+            const sb = (productsData[cat][b]||{})._sort;
+            if (Number.isFinite(sa) && Number.isFinite(sb)) return sa - sb;
+            if (Number.isFinite(sa)) return -1;
+            if (Number.isFinite(sb)) return 1;
+            // 3) 名前昇順
+            return String(a).localeCompare(String(b));
+        });
         items.forEach(item => {
             const option = document.createElement('option');
             option.value = item;
@@ -118,11 +175,32 @@ function updateBasicItems(productNumber) {
     itemSelect.innerHTML = '<option value="">大項目を先に選択してください</option>';
     
     if (categorySelect.value) {
-        const items = Object.keys(kisoProductsData[categorySelect.value]);
+        const cat = categorySelect.value;
+        const siMap = (window.productsSortIndexMap && window.productsSortIndexMap[cat]) || null;
+        const items = Object.keys(kisoProductsData[cat]).sort((a,b)=>{
+            const sai = siMap && (typeof siMap[a] === 'number') ? siMap[a] : null;
+            const sbi = siMap && (typeof siMap[b] === 'number') ? siMap[b] : null;
+            if (sai!=null && sbi!=null) return sai - sbi;
+            if (sai!=null) return -1;
+            if (sbi!=null) return 1;
+            const sa = (kisoProductsData[cat][a]||{})._sort;
+            const sb = (kisoProductsData[cat][b]||{})._sort;
+            if (Number.isFinite(sa) && Number.isFinite(sb)) return sa - sb;
+            if (Number.isFinite(sa)) return -1;
+            if (Number.isFinite(sb)) return 1;
+            return String(a).localeCompare(String(b));
+        });
         items.forEach(item => {
             const option = document.createElement('option');
             option.value = item;
-            option.textContent = item;
+            // 追加工事カテゴリは表示名を「外基礎追/中基礎追」にする
+            if (categorySelect.value === '追加工事') {
+                if (item === '外基礎') option.textContent = '外基礎追';
+                else if (item === '中基礎') option.textContent = '中基礎追';
+                else option.textContent = item;
+            } else {
+                option.textContent = item;
+            }
             itemSelect.appendChild(option);
         });
         itemSelect.disabled = false;
@@ -137,44 +215,55 @@ function calculateNormalProduct(productNumber) {
     const quantity = parseFloat(document.getElementById(`normal-quantity-${productNumber}`).value) || 0;
     const discount = parseFloat(document.getElementById(`normal-discount-${productNumber}`).value) || 0;
 
-    if (!category || !item || quantity <= 0) {
+    // 数量が未入力でも、基本料金（base）は計算したいので quantity<=0 では止めない
+    if (!category || !item) {
         document.getElementById(`normal-result-ex-${productNumber}`).textContent = '0円';
         document.getElementById(`normal-result-in-${productNumber}`).textContent = '0円';
         return;
     }
 
-    // 商品データを取得
-    const productData = productsData[category][item];
-    if (!productData) return;
-
-    // 価格計算
-    let exTax = productData.base || 0;
-    if (productData.areaThreshold !== undefined) {
-        // areaThresholdがある場合：超過分のみ加算
-        if (quantity > productData.areaThreshold) {
-            exTax += (quantity - productData.areaThreshold) * productData.price;
-        }
-    } else {
-        // areaThresholdがない場合：全数量に単価を適用
-        exTax += quantity * productData.price;
-    }
-    
-    // 値引き計算（2桁は%、3桁以上は金額）
-    let discountAmount = 0;
-    if (discount > 0) {
-        if (discount < 100) {
-            // 2桁以下は%として計算
-            discountAmount = exTax * (discount / 100);
+    // 価格計算（CorePricing + ルール適用）
+    let exTax = 0;
+    let inTax = 0;
+    try {
+        if (window.CorePricing && typeof window.CorePricing.calculateProductLine === 'function') {
+            const ctx = buildSelectedContext();
+            const pd = (window.productsData || window.goodsData || productsData);
+            const kd = (window.kisoProductsData || kisoProductsData);
+            const res = window.CorePricing.calculateProductLine({
+                type: 'normal',
+                category: category,
+                item: item,
+                quantity: quantity,
+                discountValue: discount,
+                selectedProductsContext: ctx,
+                productsData: pd,
+                kisoProductsData: kd
+            });
+            exTax = Number(res && res.ex) || 0;
+            inTax = Number(res && res.inTax) || Math.floor(exTax * 1.1);
         } else {
-            // 3桁以上は金額として計算
-            discountAmount = discount;
+            // フォールバック（旧実装）
+            const productData = productsData[category][item];
+            if (!productData) return;
+            exTax = productData.base || 0;
+            if (productData.areaThreshold !== undefined) {
+                if (quantity > productData.areaThreshold) {
+                    exTax += (quantity - productData.areaThreshold) * productData.price;
+                }
+            } else {
+                exTax += quantity * productData.price;
+            }
+            let discountAmount = 0;
+            if (discount > 0) {
+                discountAmount = discount < 100 ? (exTax * (discount / 100)) : discount;
+            }
+            exTax = Math.max(0, exTax - discountAmount);
+            inTax = Math.floor(exTax * 1.1);
         }
+    } catch (_) {
+        exTax = 0; inTax = 0;
     }
-    
-    exTax -= discountAmount;
-    exTax = Math.max(0, exTax);
-    
-    const inTax = Math.floor(exTax * 1.1);
 
     // 結果を表示
     document.getElementById(`normal-result-ex-${productNumber}`).textContent = exTax.toLocaleString() + '円';
@@ -197,37 +286,48 @@ function calculateBasicProduct(productNumber) {
         return;
     }
 
-    // 基礎商品データを取得
-    const productData = kisoProductsData[category][item];
-    if (!productData) return;
-
-    // 指定された高さのデータを取得
-    const heightData = productData["高さ別価格"][height];
-    if (!heightData) return;
-
-    // 価格計算（基礎商品は高さと長さで算出）
-    let exTax = heightData["基本価格"] || 0;
-    const basicLength = productData["基本長さ"] || 0;
-    if (length > basicLength) {
-        exTax += (length - basicLength) * (heightData["長さ加算"] || 0);
-    }
-    
-    // 値引き計算（2桁は%、3桁以上は金額）
-    let discountAmount = 0;
-    if (discount > 0) {
-        if (discount < 100) {
-            // 2桁以下は%として計算
-            discountAmount = exTax * (discount / 100);
+    // 価格計算（CorePricing + ルール適用）
+    let exTax = 0;
+    let inTax = 0;
+    try {
+        if (window.CorePricing && typeof window.CorePricing.calculateProductLine === 'function') {
+            const ctx = buildSelectedContext();
+            const pd = (window.productsData || window.goodsData || productsData);
+            const kd = (window.kisoProductsData || kisoProductsData);
+            const res = window.CorePricing.calculateProductLine({
+                type: 'kiso',
+                category: category,
+                item: item,
+                height: height,
+                length: length,
+                discountValue: discount,
+                selectedProductsContext: ctx,
+                productsData: pd,
+                kisoProductsData: kd
+            });
+            exTax = Number(res && res.ex) || 0;
+            inTax = Number(res && res.inTax) || Math.floor(exTax * 1.1);
         } else {
-            // 3桁以上は金額として計算
-            discountAmount = discount;
+            // フォールバック（旧実装）
+            const productData = kisoProductsData[category][item];
+            if (!productData) return;
+            const heightData = productData["高さ別価格"][height];
+            if (!heightData) return;
+            exTax = heightData["基本価格"] || 0;
+            const basicLength = productData["基本長さ"] || 0;
+            if (length > basicLength) {
+                exTax += (length - basicLength) * (heightData["長さ加算"] || 0);
+            }
+            let discountAmount = 0;
+            if (discount > 0) {
+                discountAmount = discount < 100 ? (exTax * (discount / 100)) : discount;
+            }
+            exTax = Math.max(0, exTax - discountAmount);
+            inTax = Math.floor(exTax * 1.1);
         }
+    } catch (_) {
+        exTax = 0; inTax = 0;
     }
-    
-    exTax -= discountAmount;
-    exTax = Math.max(0, exTax);
-    
-    const inTax = Math.floor(exTax * 1.1);
 
     // 結果を表示
     document.getElementById(`basic-result-ex-${productNumber}`).textContent = exTax.toLocaleString() + '円';
@@ -295,10 +395,19 @@ function updateSelectedProducts() {
             const li = document.createElement('li');
             li.className = 'product-item';
             
-            let details = `数量: ${product.quantity || product.length} | ${product.type === 'normal' ? '通常商品' : '基礎商品'}`;
-            if (product.type === 'basic' && product.height) {
-                details += ` | 高さ: ${product.height}cm`;
+            let qtyDisplay = '';
+            if (product.type === 'basic') {
+                if (product.height && (product.length || product.length === 0)) {
+                    qtyDisplay = `${product.height}*${product.length}`;
+                } else if (product.length || product.length === 0) {
+                    qtyDisplay = String(product.length);
+                } else {
+                    qtyDisplay = '';
+                }
+            } else {
+                qtyDisplay = product.quantity;
             }
+            let details = `数量: ${qtyDisplay} | ${product.type === 'normal' ? '通常商品' : '基礎商品'}`;
             
             // 値引き表示の作成
             let discountDisplay = '';
@@ -369,6 +478,22 @@ function updateTotal() {
         const price = parseFloat(product.exTax.replace(/[^\d]/g, '')) || 0;
         totalExTax += price;
     });
+
+    // 基礎セット割: 新規工事/外基礎 と 新規工事/中基礎 が同時にある場合、基礎合計から40,000円減額
+    (function applyKisoSetDiscount(){
+        let hasGai = false, hasNaka = false;
+        let kisoSum = 0;
+        selectedProducts.forEach(p=>{
+            if (p.type === 'basic' && p.category === '新規工事') {
+                const amt = parseFloat((p.exTax||'').replace(/[^\d]/g,'')) || 0;
+                if (p.item === '外基礎') { hasGai = true; kisoSum += amt; }
+                if (p.item === '中基礎') { hasNaka = true; kisoSum += amt; }
+            }
+        });
+        if (hasGai && hasNaka) {
+            totalExTax -= 40000;
+        }
+    })();
 
     // 管理費を追加
     const managementFeeCheckbox = document.getElementById('management-fee-checkbox');
@@ -450,7 +575,14 @@ function addNormalProduct() {
 
     // カテゴリオプションを追加
     const categorySelect = document.getElementById(`normal-category-${newProductNumber}`);
-    const normalCategories = Object.keys(productsData);
+    const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+    const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+    const normalCategories = Object.keys(productsData).sort((a,b)=>{
+        const ia = orderMap.has(a)?orderMap.get(a):Number.MAX_SAFE_INTEGER;
+        const ib = orderMap.has(b)?orderMap.get(b):Number.MAX_SAFE_INTEGER;
+        if (ia!==ib) return ia-ib;
+        return String(a).localeCompare(String(b));
+    });
     normalCategories.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
@@ -524,7 +656,14 @@ function addBasicProduct() {
 
     // カテゴリオプションを追加
     const categorySelect = document.getElementById(`basic-category-${newProductNumber}`);
-    const basicCategories = Object.keys(kisoProductsData);
+    const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+    const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+    const basicCategories = Object.keys(kisoProductsData).sort((a,b)=>{
+        const ia = orderMap.has(a)?orderMap.get(a):Number.MAX_SAFE_INTEGER;
+        const ib = orderMap.has(b)?orderMap.get(b):Number.MAX_SAFE_INTEGER;
+        if (ia!==ib) return ia-ib;
+        return String(a).localeCompare(String(b));
+    });
     basicCategories.forEach(category => {
         const option = document.createElement('option');
         option.value = category;
@@ -553,31 +692,21 @@ function calculateAll() {
 
 function clearAllProducts() {
     if (confirm('すべての商品を削除しますか？')) {
-        // フォームをリセット
-        document.querySelectorAll('.product-form').forEach(form => {
-            if (form.id !== 'normal-product-1' && form.id !== 'basic-product-1') {
-                form.remove();
-            }
-        });
+        // 既存フォームを完全に削除
+        const normalContainer = document.getElementById('normal-products');
+        const basicContainer  = document.getElementById('basic-products');
+        if (normalContainer) normalContainer.innerHTML = '';
+        if (basicContainer)  basicContainer.innerHTML  = '';
 
-        // カウンターをリセット
-        productCounter = { normal: 6, basic: 3 };
+        // カウンターを初期化
+        productCounter = { normal: 0, basic: 0 };
 
-        // フォームをクリア
-        document.querySelectorAll('select, input[type="number"]').forEach(input => {
-            input.value = '';
-            if (input.tagName === 'SELECT' && input.id.includes('item')) {
-                input.disabled = true;
-                input.innerHTML = '<option value="">大項目を先に選択してください</option>';
-            }
-        });
+        // 通常商品 1〜6 を再生成
+        for (let i = 0; i < 6; i++) { addNormalProduct(); }
+        // 基礎商品 1〜3 を再生成
+        for (let i = 0; i < 3; i++) { addBasicProduct(); }
 
-        // 結果をリセット
-        document.querySelectorAll('.result-value').forEach(result => {
-            result.textContent = '0円';
-        });
-
-        // 選択商品リストをクリア
+        // 結果値は0表示のまま、右パネルの選択商品リストも空に
         updateSelectedProducts();
     }
 }
@@ -601,7 +730,7 @@ function copyToExcel() {
     // 選択された商品を配列に追加
     selectedProducts.forEach(product => {
         const price = parseFloat(product.exTax.replace(/[^\d]/g, '')) || 0;
-        
+
         // 商品名の構築（小項目名 + 値引き情報）
         let productName = product.item;
         if (product.discount > 0) {
@@ -613,18 +742,47 @@ function copyToExcel() {
                 productName += `▲${product.discount.toLocaleString()}円`;
             }
         }
-        
+
+        // 数量の表記（基礎/クラックは 高さ*長さ で保存）
+        let quantityOut = '';
+        if (product.type === 'basic') {
+            if (product.height !== undefined && product.height !== '' && product.length !== undefined) {
+                quantityOut = `${product.height}*${product.length}`;
+            } else if (product.length !== undefined) {
+                quantityOut = String(product.length);
+            }
+        } else {
+            quantityOut = product.quantity;
+        }
+
         excelData.items.push({
             category: product.category,
             item: productName,
             type: product.type === 'normal' ? '通常商品' : '基礎商品',
-            quantity: product.quantity || product.length,
+            quantity: quantityOut,
             height: product.height || '',
             discount: product.discount || 0,
             amount: price
         });
         excelData.totalExTax += price;
     });
+
+    // 基礎セット割引の適用（合計から40,000円減額 / 表示名は別途追加）
+    (function applyKisoSetDiscount(){
+        let hasGai = false, hasNaka = false;
+        selectedProducts.forEach(p=>{
+            if (p.type === 'basic' && p.category === '新規工事') {
+                if (p.item === '外基礎') hasGai = true;
+                if (p.item === '中基礎') hasNaka = true;
+            }
+        });
+        if (hasGai && hasNaka) {
+            excelData.totalExTax -= 40000;
+            excelData.hasKisoSet = true;
+        } else {
+            excelData.hasKisoSet = false;
+        }
+    })();
 
     // 管理費を追加
     if (excelData.managementFee) {
@@ -636,19 +794,18 @@ function copyToExcel() {
     // クリップボード用のテキスト形式を作成（税抜金額を送信）
     const clipboardText = createClipboardText(excelData);
 
-    // デバッグ用：クリップボードの内容を確認
-    console.log('クリップボードにコピーする内容:', clipboardText);
-    console.log('クリップボードの長さ:', clipboardText.length);
-    console.log('改行文字の確認:', clipboardText.includes('\r\n') ? 'CRLFあり' : 'CRLFなし');
-    
-    // クリップボードにコピー
+    // クリップボードにコピー（仕様は変更しない）
     navigator.clipboard.writeText(clipboardText).then(() => {
-        // デバッグ用：アラートで内容を確認
-        alert('クリップボードにコピーしました:\n' + 
-              '長さ: ' + clipboardText.length + '文字\n' +
-              '改行数: ' + (clipboardText.split('\r\n').length - 1) + '個\n' +
-              '内容（全体）:\n' + clipboardText);
-        showCopyStatus();
+        // ボタン直下に実行結果を3秒表示
+        const namesJoined = (function(){
+            const arr = [];
+            excelData.items.forEach(it=> arr.push(it.item));
+            if (excelData.managementFee) arr.push('管有');
+            return arr.join('・');
+        })();
+        const quantitiesJoined = excelData.items.map(it=> it.quantity).join('/');
+        const amountStr = excelData.totalExTax.toLocaleString() + '円';
+        showCopyStatus(namesJoined, quantitiesJoined, amountStr);
     }).catch(err => {
         console.error('クリップボードへのコピーに失敗しました:', err);
         alert('クリップボードへのコピーに失敗しました。ブラウザの設定を確認してください。');
@@ -661,9 +818,21 @@ function createClipboardText(data) {
     
     // 商品名（・区切り）
     let productNames = [];
-    data.items.forEach(item => {
-        productNames.push(item.item);
-    });
+    if (data.hasKisoSet) {
+        // 基礎セット成立時は、個別の外基礎・中基礎は出力せず、セット表記のみ出す
+        data.items.forEach(item => {
+            const isKisoPair = (item.category === '新規工事') && (item.item === '外基礎' || item.item === '中基礎');
+            if (!isKisoPair) productNames.push(item.item);
+        });
+    } else {
+        data.items.forEach(item => {
+            productNames.push(item.item);
+        });
+    }
+    // 基礎セットが成立している場合、明示トークンを追加
+    if (data.hasKisoSet) {
+        productNames.push('(外基礎・中基礎)▲ｾｯﾄ');
+    }
     
     // 管理費がある場合は最後に「管有」を追加
     if (data.managementFee) {
@@ -685,12 +854,19 @@ function createClipboardText(data) {
     return clipboardText;
 }
 
-function showCopyStatus() {
+function showCopyStatus(productNames, quantities, amount) {
     const statusElement = document.getElementById('copy-status');
-    statusElement.style.display = 'block';
+    if (statusElement) {
+        // 表示文面を差し替え
+        const namesText = productNames ? String(productNames) : '';
+        const qtyText = quantities ? String(quantities) : '';
+        const amtText = amount ? String(amount) : '';
+        statusElement.innerHTML = `✅ コピーしました<br>商品名：${namesText}<br>数量：${qtyText}<br>金額：${amtText}<br>Excelへ進んでください`;
+        statusElement.style.display = 'block';
+    }
     
     // 3秒後に非表示
     setTimeout(() => {
-        statusElement.style.display = 'none';
+        if (statusElement) statusElement.style.display = 'none';
     }, 3000);
 }

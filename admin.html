@@ -29,6 +29,50 @@
     </header>
     <main>
         <div id="msg" class="card" style="display:none;color:#b91c1c;background:#fff7ed;border-color:#fecaca"></div>
+
+        <div class="card" style="margin-bottom:8px;">
+            <div class="row" style="gap:8px;">
+                <button id="tab-btn-products" class="primary">商品金額登録</button>
+                <button id="tab-btn-rules">コア計算登録</button>
+            </div>
+        </div>
+
+        <div id="tab-rules" style="display:none;">
+        <div class="card">
+            <h3 style="margin:0 0 8px;">コア設定（ルール）</h3>
+            <div class="row" style="gap:8px; align-items: center;">
+                <label>ルール一覧</label>
+                <button id="rules-reload">再読み込み</button>
+                <button id="rule-add" class="primary">追加（モーダル）</button>
+            </div>
+
+            <!-- インライン新規ルール -->
+            <div class="row" id="inline-rule" style="gap:8px; margin-top:10px; align-items:center; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px;">
+              <span class="muted">新規ルール</span>
+              <label>値引き対象</label>
+              <select id="r2-target-cat"></select>
+              <select id="r2-target-item"></select>
+              <label>条件対象</label>
+              <select id="r2-cond-cat"></select>
+              <select id="r2-cond-item"></select>
+              <span class="muted">現在単価:</span>
+              <input id="r2-unit-current" type="number" disabled style="width:110px; background:#f3f4f6"/>
+              <label>条件一致時の単価</label>
+              <input id="r2-unit" type="number" placeholder="例: 2800" style="width:120px"/>
+              <button id="r2-save" class="primary">登録</button>
+            </div>
+
+            <table style="margin-top:8px;">
+                <thead>
+                  <tr><th>値引対象商品</th><th>条件商品</th><th>適用価格</th><th>状態</th><th class="right">操作</th></tr>
+                </thead>
+                <tbody id="rules-list"></tbody>
+            </table>
+
+        </div>
+        </div>
+
+        <div id="tab-products">
         <div class="card">
             <h3 style="margin:0 0 8px;">新規登録</h3>
             <div class="row">
@@ -95,9 +139,10 @@
                         <option value="all">すべて</option>
                     </select>
                     <button id="reload">再読み込み</button>
+                    <button id="saveOrder" class="primary">並び順を保存</button>
                 </div>
             </div>
-            <table>
+            <table id="productTable">
                 <thead>
                     <tr><th>カテゴリ</th><th>商品名</th><th>助数詞</th><th>公開状態</th><th class="right">操作</th></tr>
                 </thead>
@@ -166,6 +211,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <script src="./firebase-config.js"></script>
+    <script src="./core_rules.js"></script>
     <script>
     // Init
     firebase.initializeApp(window.FIREBASE_CONFIG || {});
@@ -250,6 +296,9 @@
     };
 
     // List
+    // D&D 並べ替え用の構造
+    let currentRows = [];
+
     async function load() {
         const filterStatus = document.getElementById('filterStatus').value;
         const filterCategory = document.getElementById('filterCategory').value;
@@ -281,10 +330,19 @@
             const ia = orderMap.has(ca) ? orderMap.get(ca) : Number.MAX_SAFE_INTEGER;
             const ib = orderMap.has(cb) ? orderMap.get(cb) : Number.MAX_SAFE_INTEGER;
             if (ia !== ib) return ia - ib;
+            // sortIndex がある場合はそれを優先
+            const sa = (typeof a.v.sortIndex === 'number') ? a.v.sortIndex : null;
+            const sb = (typeof b.v.sortIndex === 'number') ? b.v.sortIndex : null;
+            if (sa!=null && sb!=null) return sa - sb;
+            if (sa!=null) return -1;
+            if (sb!=null) return 1;
             return String(a.v.itemName || '').localeCompare(String(b.v.itemName || ''));
         });
-        rows.forEach(({id, v}) => {
+        currentRows = rows; // 保存
+        rows.forEach(({id, v}, idx) => {
             const tr = document.createElement('tr');
+            tr.setAttribute('draggable','true');
+            tr.dataset.id = id; tr.dataset.category = v.category||'';
             tr.innerHTML = `<td>${v.category||''}</td><td>${v.itemName||''}</td><td>${v.unitLabel||''}</td><td>${v.status||''}</td>
                 <td class="right">
                     <button data-id="${id}" class="edit">編集</button>
@@ -294,6 +352,12 @@
                 </td>`;
             tbody.appendChild(tr);
         });
+        // D&D ハンドラ（カテゴリ内のみ移動許可）
+        const tbodyEl = document.getElementById('list');
+        let dragEl = null;
+        tbodyEl.addEventListener('dragstart', e=>{ const tr=e.target.closest('tr'); if(!tr) return; dragEl=tr; e.dataTransfer.setData('text/plain', tr.dataset.id); });
+        tbodyEl.addEventListener('dragover', e=>{ e.preventDefault(); });
+        tbodyEl.addEventListener('drop', e=>{ e.preventDefault(); const targetTr=e.target.closest('tr'); if(!dragEl||!targetTr||dragEl===targetTr) return; if(dragEl.dataset.category!==targetTr.dataset.category) return; const rect=targetTr.getBoundingClientRect(); const after=e.clientY>rect.top+rect.height/2; if(after) targetTr.after(dragEl); else targetTr.before(dragEl); });
 
         tbody.querySelectorAll('.edit').forEach(b => b.onclick = () => openEdit(b.dataset.id));
         tbody.querySelectorAll('.publish').forEach(b => b.onclick = () => updateStatus(b.dataset.id, 'published'));
@@ -312,6 +376,24 @@
     }
 
     document.getElementById('reload').onclick = load;
+    document.getElementById('saveOrder').onclick = async ()=>{
+        const tbody = document.getElementById('list');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        // カテゴリ単位で0..Nの sortIndex を再採番
+        const updates = [];
+        const indexByCat = new Map();
+        rows.forEach(tr=>{
+            const id = tr.dataset.id; const cat = tr.dataset.category||'';
+            const idx = indexByCat.has(cat) ? indexByCat.get(cat)+1 : 0; indexByCat.set(cat, idx);
+            updates.push({ id, cat, sortIndex: idx });
+        });
+        // Firestore バッチ
+        const batch = db.batch();
+        updates.forEach(u=>{ const ref = db.collection('products').doc(u.id); batch.update(ref, { sortIndex: u.sortIndex }); });
+        await batch.commit();
+        alert('並び順を保存しました');
+        load();
+    };
     // カテゴリ選択を商品データから自動生成
     async function fillCategoriesAndLists() {
         const catSet = new Set(["消毒","そのほか","床下機器","新規工事","追加工事","クラック","害虫","断熱遮熱","天井機器","旧商品","基礎関連"]);
@@ -365,6 +447,300 @@
     }
     fillCategoriesAndLists();
     load();
+
+    // ---- タブ切替 ----
+    (function(){
+      const tabProducts = document.getElementById('tab-products');
+      const tabRules = document.getElementById('tab-rules');
+      const btnProducts = document.getElementById('tab-btn-products');
+      const btnRules = document.getElementById('tab-btn-rules');
+      function showProducts(){ tabProducts.style.display=''; tabRules.style.display='none'; btnProducts.classList.add('primary'); btnRules.classList.remove('primary'); }
+      function showRules(){ tabProducts.style.display='none'; tabRules.style.display=''; btnRules.classList.add('primary'); btnProducts.classList.remove('primary'); }
+      btnProducts.onclick = showProducts; btnRules.onclick = showRules;
+      showProducts();
+    })();
+
+    // ---- ルール管理 ----
+    const rulesTbody = document.getElementById('rules-list');
+    document.getElementById('rules-reload').onclick = loadRules;
+    document.getElementById('rule-add').onclick = () => openRuleEdit();
+
+    // インライン新規ルールの候補生成
+    (async function initInlineRule(){
+      const cats = new Set();
+      const itemsByCat = new Map(); // category -> [{name, sortIndex}]
+      try {
+        const snap = await db.collection('products').limit(1000).get();
+        snap.forEach(d=>{
+          const v=d.data()||{}; const c=v.category||''; const n=v.itemName||''; const si=(typeof v.sortIndex==='number')? v.sortIndex : null;
+          if(c) cats.add(c);
+          if(c&&n){ if(!itemsByCat.has(c)) itemsByCat.set(c,[]); itemsByCat.get(c).push({name:n, sortIndex:si}); }
+        });
+      } catch(_){ }
+      // @Calculation-fixed.html と同じ優先順
+      const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+      const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+      const catArr = Array.from(cats).sort((a,b)=>{
+        const ia = orderMap.has(a) ? orderMap.get(a) : Number.MAX_SAFE_INTEGER;
+        const ib = orderMap.has(b) ? orderMap.get(b) : Number.MAX_SAFE_INTEGER;
+        if (ia!==ib) return ia-ib;
+        return String(a).localeCompare(String(b));
+      });
+      const tC = document.getElementById('r2-target-cat');
+      const tI = document.getElementById('r2-target-item');
+      const cC = document.getElementById('r2-cond-cat');
+      const cI = document.getElementById('r2-cond-item');
+      function fill(sel, arr){ sel.innerHTML=''; arr.forEach(v=>{const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);}); }
+      function sortItems(list){
+        list.sort((a,b)=>{
+          const sa=(typeof a.sortIndex==='number')?a.sortIndex:null; const sb=(typeof b.sortIndex==='number')?b.sortIndex:null;
+          if (sa!=null && sb!=null) return sa-sb;
+          if (sa!=null) return -1;
+          if (sb!=null) return 1;
+          return String(a.name).localeCompare(String(b.name));
+        });
+        return list.map(x=>x.name);
+      }
+      function fillItems(catSel, itemSel){ const c=catSel.value; const arr=sortItems((itemsByCat.get(c)||[]).slice()); fill(itemSel, arr); refreshCurrentUnit(); }
+      function refreshCurrentUnit(){
+        const c=tC.value, n=tI.value; if(!c||!n){ document.getElementById('r2-unit-current').value=''; return; }
+        db.collection('products').where('category','==',c).where('itemName','==',n).limit(1).get().then(s=>{ let u=''; s.forEach(d=>{ const v=d.data()||{}; u=v?.pricing?.unitPrice ?? ''; }); document.getElementById('r2-unit-current').value=u; });
+      }
+      fill(tC, catArr); fill(cC, catArr);
+      tC.onchange = ()=> fillItems(tC, tI);
+      cC.onchange = ()=> fillItems(cC, cI);
+      fillItems(tC, tI); fillItems(cC, cI);
+
+      document.getElementById('r2-save').onclick = async ()=>{
+        const doc = {
+          ruleType: 'co-occur-unit-override',
+          status: 'published',
+          when: {
+            targetCategory: tC.value.trim(),
+            targetItem: tI.value.trim(),
+            conditionCategory: cC.value.trim(),
+            conditionItem: cI.value.trim()
+          },
+          apply: { unitPrice: Number(document.getElementById('r2-unit').value||0) }
+        };
+        if (!doc.when.targetItem || !doc.when.conditionItem) { alert('値引き対象と条件対象を選択してください'); return; }
+        await db.collection('rules').add(doc);
+        document.getElementById('r2-unit').value='';
+        await loadRules();
+        alert('ルールを登録しました');
+      };
+    })();
+
+    function sortByPreferred(arr, sortIndexMap){
+      const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+      const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+      function getSI(cat, name){
+        if (!sortIndexMap) return null;
+        const m = sortIndexMap[cat];
+        if (!m) return null;
+        const v = m[name];
+        return (typeof v === 'number') ? v : null;
+      }
+      arr.sort((a,b)=>{
+        const taCat = (a.when?.targetCategory)||''; const tbCat = (b.when?.targetCategory)||'';
+        const taIdx = orderMap.has(taCat)?orderMap.get(taCat):Number.MAX_SAFE_INTEGER;
+        const tbIdx = orderMap.has(tbCat)?orderMap.get(tbCat):Number.MAX_SAFE_INTEGER;
+        if (taIdx!==tbIdx) return taIdx-tbIdx;
+        const taItem = (a.when?.targetItem)||''; const tbItem = (b.when?.targetItem)||'';
+        const sai = getSI(taCat, taItem); const sbi = getSI(tbCat, tbItem);
+        if (sai!=null && sbi!=null && sai!==sbi) return sai - sbi;
+        if (sai!=null) return -1; if (sbi!=null) return 1;
+        const tComp = String(taItem).localeCompare(String(tbItem)); if (tComp!==0) return tComp;
+        const caCat = (a.when?.conditionCategory)||''; const cbCat = (b.when?.conditionCategory)||'';
+        const caIdx = orderMap.has(caCat)?orderMap.get(caCat):Number.MAX_SAFE_INTEGER;
+        const cbIdx = orderMap.has(cbCat)?orderMap.get(cbCat):Number.MAX_SAFE_INTEGER;
+        if (caIdx!==cbIdx) return caIdx-cbIdx;
+        const caItem = (a.when?.conditionItem)||''; const cbItem = (b.when?.conditionItem)||'';
+        const sca = getSI(caCat, caItem); const scb = getSI(cbCat, cbItem);
+        if (sca!=null && scb!=null && sca!==scb) return sca - scb;
+        if (sca!=null) return -1; if (scb!=null) return 1;
+        return String(caItem).localeCompare(String(cbItem));
+      });
+    }
+
+    function renderRules(rows, sortIndexMap){
+      // ユーザー要望: 第一ソート=値引き対象（カテゴリ優先→商品名）、第二ソート=条件商品（カテゴリ優先→商品名）
+      const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
+      const orderMap = new Map(preferred.map((v,i)=>[v,i]));
+      rows.sort((a,b)=>{
+        const taCat = (a.when?.targetCategory)||''; const tbCat = (b.when?.targetCategory)||'';
+        const taIdx = orderMap.has(taCat)?orderMap.get(taCat):Number.MAX_SAFE_INTEGER;
+        const tbIdx = orderMap.has(tbCat)?orderMap.get(tbCat):Number.MAX_SAFE_INTEGER;
+        if (taIdx!==tbIdx) return taIdx-tbIdx;
+        const taItem = (a.when?.targetItem)||''; const tbItem = (b.when?.targetItem)||'';
+        const tComp = String(taItem).localeCompare(String(tbItem)); if (tComp!==0) return tComp;
+        const caCat = (a.when?.conditionCategory)||''; const cbCat = (b.when?.conditionCategory)||'';
+        const caIdx = orderMap.has(caCat)?orderMap.get(caCat):Number.MAX_SAFE_INTEGER;
+        const cbIdx = orderMap.has(cbCat)?orderMap.get(cbCat):Number.MAX_SAFE_INTEGER;
+        if (caIdx!==cbIdx) return caIdx-cbIdx;
+        const caItem = (a.when?.conditionItem)||''; const cbItem = (b.when?.conditionItem)||'';
+        return String(caItem).localeCompare(String(cbItem));
+      });
+      rulesTbody.innerHTML='';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const w = r.when||{}; const a = r.apply||{};
+        const target = `${w.targetCategory||''}/${w.targetItem||''}`;
+        const cond = `${w.conditionCategory||''}/${w.conditionItem||''}`;
+        const app = (a.unitPrice!=null && a.unitPrice!=='') ? a.unitPrice : '';
+        tr.innerHTML = `<td>${target}</td><td>${cond}</td><td>${app}</td><td>${r.status||''}</td>
+          <td class="right">
+            <button class="r-edit" data-id="${r.id}">編集</button>
+            <button class="r-pub" data-id="${r.id}">公開</button>
+            <button class="r-draft" data-id="${r.id}">下書き</button>
+            <button class="r-del danger" data-id="${r.id}">削除</button>
+          </td>`;
+        rulesTbody.appendChild(tr);
+      });
+      rulesTbody.querySelectorAll('.r-edit').forEach(b=>b.onclick=()=>openRuleEdit(b.dataset.id));
+      rulesTbody.querySelectorAll('.r-pub').forEach(b=>b.onclick=()=>updateRuleStatus(b.dataset.id,'published'));
+      rulesTbody.querySelectorAll('.r-draft').forEach(b=>b.onclick=()=>updateRuleStatus(b.dataset.id,'draft'));
+      rulesTbody.querySelectorAll('.r-del').forEach(b=>b.onclick=()=>deleteRule(b.dataset.id));
+    }
+
+    async function loadRules(){
+      const snap = await db.collection('rules').limit(500).get();
+      const rows = [];
+      snap.forEach(d=> rows.push(Object.assign({id:d.id}, d.data())));
+      // products から sortIndex マップを構築
+      let sortIndexMap = {};
+      try {
+        // 管理画面の既定表示（公開）に合わせ、公開商品の順序を採用
+        const ps = await db.collection('products').where('status','==','published').limit(1000).get();
+        ps.forEach(doc=>{ const v=doc.data()||{}; const c=v.category||''; const n=v.itemName||''; const si=(typeof v.sortIndex==='number')? v.sortIndex : null; if(!c||!n) return; if(!sortIndexMap[c]) sortIndexMap[c]={}; sortIndexMap[c][n]=si; });
+      } catch(_){ }
+      renderRules(rows, sortIndexMap);
+      // CoreRules にも反映（画面内テスト用）
+      if (window.CoreRules) CoreRules.rules = rows;
+    }
+
+    async function updateRuleStatus(id, status){
+      await db.collection('rules').doc(id).update({status});
+      loadRules();
+    }
+
+    async function deleteRule(id){
+      if (!confirm('削除しますか？')) return;
+      await db.collection('rules').doc(id).delete();
+      loadRules();
+    }
+
+    function openRuleEdit(id){
+      const base = document.createElement('div');
+      base.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;';
+      base.innerHTML = `<div style="background:#fff; width:min(720px,95vw); border-radius:10px; border:1px solid #e5e7eb; padding:16px;">
+        <h3 style="margin-top:0">ルール編集</h3>
+        <div class="row" style="margin-top:6px">
+          <label>種別</label>
+          <select id="r-type">
+            <option value="co-occur-unit-override">同時契約: 片方の単価を上書き</option>
+          </select>
+          <label>状態</label>
+          <select id="r-status"><option value="draft">下書き</option><option value="published">公開</option></select>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label>値引き対象カテゴリ</label><select id="r-target-cat"></select>
+          <label>値引き対象商品</label><select id="r-target-item"></select>
+          <label>条件対象カテゴリ</label><select id="r-cond-cat"></select>
+          <label>条件対象商品名</label><select id="r-cond-item"></select>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label>現在の単価</label><input id="r-unit-current" type="number" disabled style="background:#f3f4f6"/>
+          <label>条件一致時の単価</label><input id="r-unit" type="number" placeholder="例: 2800"/>
+        </div>
+        <div class="row" style="margin-top:12px; justify-content:flex-end; gap:8px;">
+          <button id="r-cancel">キャンセル</button>
+          <button id="r-save" class="primary">保存</button>
+        </div>
+      </div>`;
+      document.body.appendChild(base);
+
+      async function fill(id){
+        // カテゴリ/商品プルダウンを埋める
+        const cats = new Set();
+        const namesByCat = new Map();
+        try {
+          const snap = await db.collection('products').where('status','in',['published','draft']).limit(1000).get();
+          snap.forEach(d=>{
+            const v = d.data()||{}; const c=v.category||''; const n=v.itemName||'';
+            if (c) cats.add(c);
+            if (c && n){ if (!namesByCat.has(c)) namesByCat.set(c, new Set()); namesByCat.get(c).add(n); }
+          });
+        } catch(_){}
+        function fillSelect(selId, arr){
+          const sel = base.querySelector(selId); sel.innerHTML='';
+          arr.forEach(v=>{ const opt=document.createElement('option'); opt.value=v; opt.textContent=v; sel.appendChild(opt); });
+        }
+        const sortedCats = Array.from(cats).sort((a,b)=>String(a).localeCompare(String(b)));
+        fillSelect('#r-target-cat', sortedCats); fillSelect('#r-cond-cat', sortedCats);
+        function bindItem(catSel, itemSel){
+          const c = base.querySelector(catSel).value;
+          const items = Array.from((namesByCat.get(c)||new Set())).sort((a,b)=>String(a).localeCompare(String(b)));
+          fillSelect(itemSel, items);
+        }
+        base.querySelector('#r-target-cat').onchange = ()=> { bindItem('#r-target-cat','#r-target-item'); refreshCurrentUnit(); };
+        base.querySelector('#r-cond-cat').onchange = ()=> bindItem('#r-cond-cat','#r-cond-item');
+        bindItem('#r-target-cat','#r-target-item'); bindItem('#r-cond-cat','#r-cond-item');
+
+        // 既存データを充填
+        if (!id) { refreshCurrentUnit(); return; }
+        const snap = await db.collection('rules').doc(id).get();
+        const v = snap.data()||{};
+        base.querySelector('#r-type').value = v.ruleType || 'co-occur-unit-override';
+        base.querySelector('#r-status').value = v.status || 'draft';
+        const w = v.when||{}; const a = v.apply||{};
+        if (w.targetCategory) base.querySelector('#r-target-cat').value = w.targetCategory;
+        bindItem('#r-target-cat','#r-target-item'); if (w.targetItem) base.querySelector('#r-target-item').value = w.targetItem;
+        if (w.conditionCategory) base.querySelector('#r-cond-cat').value = w.conditionCategory;
+        bindItem('#r-cond-cat','#r-cond-item'); if (w.conditionItem) base.querySelector('#r-cond-item').value = w.conditionItem;
+        base.querySelector('#r-unit').value = a.unitPrice||'';
+        refreshCurrentUnit();
+
+        async function refreshCurrentUnit(){
+          try {
+            const c = base.querySelector('#r-target-cat').value; const n = base.querySelector('#r-target-item').value;
+            const snap = await db.collection('products').where('category','==',c).where('itemName','==',n).limit(1).get();
+            let current = '';
+            snap.forEach(d=>{ const v=d.data()||{}; current = v?.pricing?.unitPrice ?? ''; });
+            base.querySelector('#r-unit-current').value = current;
+          } catch(_){ base.querySelector('#r-unit-current').value=''; }
+        }
+      }
+
+      base.querySelector('#r-cancel').onclick = () => base.remove();
+      base.querySelector('#r-save').onclick = async () => {
+        const doc = {
+          ruleType: base.querySelector('#r-type').value,
+          status: base.querySelector('#r-status').value,
+          when: {
+            targetCategory: base.querySelector('#r-target-cat').value.trim(),
+            targetItem:     base.querySelector('#r-target-item').value.trim(),
+            conditionCategory: base.querySelector('#r-cond-cat').value.trim(),
+            conditionItem:     base.querySelector('#r-cond-item').value.trim()
+          },
+          apply: { unitPrice: Number(base.querySelector('#r-unit').value||0) }
+        };
+        if (id) await db.collection('rules').doc(id).set(doc, {merge:true});
+        else await db.collection('rules').add(doc);
+        base.remove();
+        loadRules();
+      };
+
+      fill(id);
+    }
+
+    // 簡易テスター
+    // テスター用プルダウン生成
+    // 旧テスター初期化を撤去（安全のため即return）
+    (async function(){ return; })();
+
+    // 初期ロード
+    loadRules();
 
     // ---- 編集ロジック ----
     let editingId = null;
@@ -448,5 +824,3 @@
     </script>
 </body>
 </html>
-
-

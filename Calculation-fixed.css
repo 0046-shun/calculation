@@ -81,12 +81,16 @@ body {
 
 /* メインレイアウト - 2カラム固定 */
 .app-container {
-  display: grid;
-  grid-template-columns: 400px 1fr; /* 左パネル固定幅、右パネル可変 */
-  gap: var(--space-6);
+  /* グリッド由来の縦ギャップ問題を排除するためフレックス2段構成に変更 */
+  display: flex;
+  flex-wrap: wrap; /* ヘッダー(1段) + パネル2枚(2段目) */
+  align-items: flex-start;
+  align-content: flex-start;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
   max-width: 100vw;
   margin: 0 auto;
-  padding: var(--space-6);
+  padding: var(--space-3);
   min-height: 100vh;
 }
 
@@ -96,11 +100,15 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-4);
+  margin-bottom: 0 !important; /* 余白はグリッドgapに統一 */
   padding: var(--space-3) var(--space-4);
   background: white;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
+  min-height: 64px; /* 固定高さで見出しが伸びないようにする */
+  max-height: 64px; /* これ以上拡がらない */
+  overflow: hidden; /* 子コンテンツのはみ出しで高さが増えないように */
+  flex: 0 0 100%; /* 1段目全幅に配置 */
 }
 
 .app-title {
@@ -108,6 +116,7 @@ body {
   font-weight: 700;
   color: var(--primary-700);
   margin: 0;
+  white-space: nowrap;
 }
 
 .nav-buttons {
@@ -147,14 +156,16 @@ body {
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
-  padding: var(--space-6);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   height: fit-content;
   position: sticky;
-  top: var(--space-6);
+  top: var(--space-3);
   overflow-y: auto;
   max-height: calc(100vh - 120px);
+  margin-top: 0 !important;
+  flex: 0 0 400px; /* 左パネルの固定幅 */
 }
 
 .panel-header {
@@ -162,7 +173,9 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-3); /* 余白を圧縮 */
+  min-height: 40px; /* クリア後に高さが暴れないよう安定化 */
+  max-height: 40px;
 }
 
 .panel-icon {
@@ -428,11 +441,13 @@ body {
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
-  padding: var(--space-6);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   max-height: calc(100vh - 120px);
+  margin-top: 0 !important;
+  flex: 1 1 auto; /* 右パネルは可変 */
 }
 
 /* タブナビゲーション */
