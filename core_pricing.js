@@ -77,8 +77,17 @@
   function calculateSO2BuyPrice(quantity, selectedProductsContext, productData) {
     var q = toNumber(quantity, 0);
     if (q <= 0) return 0;
-    // 併用: DC2 が選択に含まれると 83,000、単体は 88,000（productData.price 優先）
-    var hasDC2 = selectedProductsContext.some(function (p) { return includesAny(p.item, ['DC2']); });
+    // まずはコアルール（商品名対商品名）の単価上書きを優先
+    try {
+      if (global.CoreRules && typeof global.CoreRules.getUnitOverride === 'function') {
+        var override = global.CoreRules.getUnitOverride('床下機器', 'SO2買', selectedProductsContext || []);
+        if (isFinite(override) && Number(override) > 0) {
+          return Number(override) * q;
+        }
+      }
+    } catch (_) {}
+    // フォールバック: DC2 が選択に含まれると 83,000、単体は 88,000（productData.price 優先）
+    var hasDC2 = (selectedProductsContext || []).some(function (p) { return includesAny(p.item, ['DC2']); });
     var unit = hasDC2 ? 83000 : toNumber(productData && productData.price, 88000);
     return unit * q;
   }
