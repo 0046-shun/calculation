@@ -128,9 +128,6 @@
 
     var exTax = base;
     if (len > basicLen) exTax += (len - basicLen) * perLen;
-    
-    // デバッグ用ログ
-    console.log(`中基礎 ${height}cm calculation: base=${base}, len=${len}, basicLen=${basicLen}, perLen=${perLen}, exTax=${exTax}`);
 
     var discount = calculateDiscount(exTax, discountValue);
     var ex = Math.max(0, exTax - discount);

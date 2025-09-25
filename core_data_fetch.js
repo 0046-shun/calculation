@@ -71,10 +71,8 @@
       }
       try {
         var db = ensureFirebaseApp();
-        console.log('Attempting to connect to Firestore...');
         db.collection('products').where('status', '==', 'published').get()
           .then(function (snap) {
-            console.log('Firestore query successful, found', snap.size, 'documents');
             var built = buildLocalFromFirestore(snap.docs || []);
             // sortIndex マップも作成（カテゴリ→商品名→sortIndex）
             try {
@@ -95,16 +93,9 @@
             if (Object.keys(built.products).length > 0) {
               global.productsData = built.products;
               global.goodsData = built.products;
-              console.log('Firestore products data loaded:', Object.keys(built.products).length, 'categories');
             }
             if (Object.keys(built.kiso).length > 0) {
               global.kisoProductsData = built.kiso;
-              console.log('Firestore kiso data loaded:', Object.keys(built.kiso).length, 'categories');
-              // 中基礎の価格データをログ出力
-              if (built.kiso['新規工事'] && built.kiso['新規工事']['中基礎']) {
-                console.log('中基礎 pricing data from Firestore:', built.kiso['新規工事']['中基礎']);
-                console.log('中基礎 基本長さ:', built.kiso['新規工事']['中基礎']['基本長さ']);
-              }
             }
 
             // UIを更新（関数がグローバル定義の場合）
@@ -115,13 +106,11 @@
             resolve({ source: 'firestore', count: snap.size });
           })
           .catch(function (err) {
-            console.error('Firestore fetch failed, fallback to local:', err);
-            console.log('Using local data instead');
+            console.warn('Firestore fetch failed, fallback to local:', err);
             resolve({ source: 'fallback-local', products: global.productsData, kiso: global.kisoProductsData, error: String(err) });
           });
       } catch (e) {
-        console.error('Firestore init failed, fallback to local:', e);
-        console.log('Using local data instead');
+        console.warn('Firestore init failed, fallback to local:', e);
         resolve({ source: 'fallback-local', products: global.productsData, kiso: global.kisoProductsData, error: String(e) });
       }
     });

@@ -14,17 +14,7 @@ function initializeApp() {
     // Firestore からの読み込み（成功時は core_data_fetch 側で再度 loadProductData を呼ぶ）
     try {
         if (window.FEATURE_USE_FIRESTORE && window.CoreDataFetch && typeof window.CoreDataFetch.loadData === 'function') {
-            console.log('Loading data from Firestore...');
-            window.CoreDataFetch.loadData().then(function(result) {
-                console.log('Data loading result:', result);
-                if (result.source === 'firestore') {
-                    console.log('Successfully loaded data from Firestore');
-                } else {
-                    console.log('Using local data:', result.source);
-                }
-            });
-        } else {
-            console.log('Firestore loading disabled or not available');
+            window.CoreDataFetch.loadData();
         }
     } catch (e) { 
         console.error('Error loading Firestore data:', e);
@@ -306,16 +296,6 @@ function calculateBasicProduct(productNumber) {
             const ctx = buildSelectedContext();
             const pd = (window.productsData || window.goodsData || productsData);
             const kd = (window.kisoProductsData || kisoProductsData);
-            
-            // デバッグ用ログ
-            console.log('Calculating basic product:', { category, item, height, length });
-            console.log('Using kiso data:', kd);
-            if (kd[category] && kd[category][item]) {
-                console.log('Product data found:', kd[category][item]);
-            } else {
-                console.log('Product data not found in kiso data');
-            }
-            
             const res = window.CorePricing.calculateProductLine({
                 type: 'kiso',
                 category: category,
@@ -329,7 +309,6 @@ function calculateBasicProduct(productNumber) {
             });
             exTax = Number(res && res.ex) || 0;
             inTax = Number(res && res.inTax) || Math.floor(exTax * 1.1);
-            console.log('Calculation result:', { exTax, inTax });
         } else {
             // フォールバック（旧実装）
             const productData = kisoProductsData[category][item];
