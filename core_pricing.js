@@ -33,9 +33,13 @@
       if (global.CoreRules && typeof global.CoreRules.getUnitOverride === 'function') {
         var override = global.CoreRules.getUnitOverride(category, item, selectedProductsContext || []);
         // 0以下の単価上書きは無視
-        if (isFinite(override) && Number(override) > 0) unit = Number(override);
+        if (isFinite(override) && Number(override) > 0) {
+          unit = Number(override);
+        }
       }
-    } catch (_) {}
+    } catch (error) {
+      // ルール適用エラーは無視
+    }
 
     var threshold = productData.areaThreshold;
     if (typeof threshold === 'number' && isFinite(threshold)) {
@@ -163,8 +167,6 @@
 
     if ((category === 'そのほか' && item === 'カビ') || (category === '消毒' && item === 'カビ')) {
       exTax = calculateKabiPrice(quantity, selectedProductsContext, productsData);
-    } else if (category === 'そのほか' && item === 'BM') {
-      exTax = calculateBMPrice(quantity, selectedProductsContext, productsData);
     } else if (category === '床下機器' && item === 'SO2買') {
       exTax = calculateSO2BuyPrice(quantity, selectedProductsContext, productData);
     } else {
@@ -174,6 +176,7 @@
     var discount = calculateDiscount(exTax, discountValue);
     var ex = Math.max(0, exTax - discount);
     var inTax = Math.floor(ex * 1.1);
+    
     return { ex: ex, inTax: inTax };
   }
 

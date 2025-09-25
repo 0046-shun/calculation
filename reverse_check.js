@@ -371,7 +371,7 @@
           if (g.isKisoSet || (hasOuter && hasInner)) { lineSum -= 40000; }
 
           var pasted = Number(r.amount||0);
-          var ok = pasted === lineSum;
+          var ok = Math.abs(pasted - lineSum) < 0.01; // 浮動小数点の精度問題を回避
           html += '<table class="' + (ok ? 'match-table' : 'mismatch-table') + '" data-line="' + lineIndex + '">';
           html += '<tr><th>商品名</th><th>値引き</th><th>システム商品名</th><th>数量</th><th>金額(税抜)</th></tr>';
           details.forEach(function(d){
@@ -389,7 +389,7 @@
                    '<span>貼付金額: ' + pasted.toLocaleString() + '</span>' +
                    '<span>計算金額(税抜): ' + lineSum.toLocaleString() + '</span>' +
                    '<span>計算金額(税込): ' + Math.round(lineSum * 1.1).toLocaleString() + '</span>' +
-                   '<span class="difference">差額: ' + (pasted - lineSum).toLocaleString() + '</span>' +
+                   '<span class="difference">差額: ' + Math.round(pasted - lineSum).toLocaleString() + '</span>' +
                    '<span class="status">' + (ok ? '一致' : '不一致') + '</span>' +
                    '</div>' +
                    '</td></tr>';

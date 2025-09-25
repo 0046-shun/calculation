@@ -318,10 +318,12 @@ function calculateNormalProductInternal(productNumber) {
     let exTax = 0;
     let inTax = 0;
     try {
+        
         if (window.CorePricing && typeof window.CorePricing.calculateProductLine === 'function') {
             const ctx = buildSelectedContext();
             const pd = (window.productsData || window.goodsData || productsData);
             const kd = (window.kisoProductsData || kisoProductsData);
+            
             const res = window.CorePricing.calculateProductLine({
                 type: 'normal',
                 category: category,
@@ -332,6 +334,7 @@ function calculateNormalProductInternal(productNumber) {
                 productsData: pd,
                 kisoProductsData: kd
             });
+            
             exTax = Number(res && res.ex) || 0;
             inTax = Number(res && res.inTax) || Math.floor(exTax * 1.1);
         } else {
@@ -353,7 +356,7 @@ function calculateNormalProductInternal(productNumber) {
             exTax = Math.max(0, exTax - discountAmount);
             inTax = Math.floor(exTax * 1.1);
         }
-    } catch (_) {
+    } catch (error) {
         exTax = 0; inTax = 0;
     }
 
@@ -397,6 +400,7 @@ function calculateBasicProductInternal(productNumber) {
             const ctx = buildSelectedContext();
             const pd = (window.productsData || window.goodsData || productsData);
             const kd = (window.kisoProductsData || kisoProductsData);
+            
             const res = window.CorePricing.calculateProductLine({
                 type: 'kiso',
                 category: category,
@@ -408,6 +412,7 @@ function calculateBasicProductInternal(productNumber) {
                 productsData: pd,
                 kisoProductsData: kd
             });
+            
             exTax = Number(res && res.ex) || 0;
             inTax = Number(res && res.inTax) || Math.floor(exTax * 1.1);
         } else {
@@ -428,7 +433,7 @@ function calculateBasicProductInternal(productNumber) {
             exTax = Math.max(0, exTax - discountAmount);
             inTax = Math.floor(exTax * 1.1);
         }
-    } catch (_) {
+    } catch (error) {
         exTax = 0; inTax = 0;
     }
 
