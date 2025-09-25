@@ -1,6 +1,7 @@
 // グローバル変数
 let selectedProducts = [];
 let productCounter = { normal: 6, basic: 3 };
+let isRecalculating = false; // 再計算中のフラグ
 
 // 初期化
 document.addEventListener('DOMContentLoaded', function() {
@@ -167,6 +168,11 @@ function updateNormalItems(productNumber) {
     } else {
         itemSelect.disabled = true;
     }
+    
+    // 商品選択が変更されたら全商品を再計算（値引きルールの適用のため）
+    setTimeout(() => {
+        recalculateAllProducts();
+    }, 100);
 }
 
 function updateBasicItems(productNumber) {
@@ -209,9 +215,25 @@ function updateBasicItems(productNumber) {
     } else {
         itemSelect.disabled = true;
     }
+    
+    // 商品選択が変更されたら全商品を再計算（値引きルールの適用のため）
+    setTimeout(() => {
+        recalculateAllProducts();
+    }, 100);
 }
 
 function calculateNormalProduct(productNumber) {
+    calculateNormalProductInternal(productNumber);
+    
+    // 個別計算後、全商品を再計算（値引きルールの適用のため）
+    if (!isRecalculating) {
+        setTimeout(() => {
+            recalculateAllProducts();
+        }, 50);
+    }
+}
+
+function calculateNormalProductInternal(productNumber) {
     const category = document.getElementById(`normal-category-${productNumber}`).value;
     const item = document.getElementById(`normal-item-${productNumber}`).value;
     const quantity = parseFloat(document.getElementById(`normal-quantity-${productNumber}`).value) || 0;
@@ -276,6 +298,17 @@ function calculateNormalProduct(productNumber) {
 }
 
 function calculateBasicProduct(productNumber) {
+    calculateBasicProductInternal(productNumber);
+    
+    // 個別計算後、全商品を再計算（値引きルールの適用のため）
+    if (!isRecalculating) {
+        setTimeout(() => {
+            recalculateAllProducts();
+        }, 50);
+    }
+}
+
+function calculateBasicProductInternal(productNumber) {
     const category = document.getElementById(`basic-category-${productNumber}`).value;
     const item = document.getElementById(`basic-item-${productNumber}`).value;
     const height = document.getElementById(`basic-height-${productNumber}`).value;
@@ -591,6 +624,11 @@ function addNormalProduct() {
         option.textContent = category;
         categorySelect.appendChild(option);
     });
+    
+    // 商品追加後、全商品を再計算（値引きルールの適用のため）
+    setTimeout(() => {
+        recalculateAllProducts();
+    }, 100);
 }
 
 function addBasicProduct() {
@@ -672,13 +710,21 @@ function addBasicProduct() {
         option.textContent = category;
         categorySelect.appendChild(option);
     });
+    
+    // 商品追加後、全商品を再計算（値引きルールの適用のため）
+    setTimeout(() => {
+        recalculateAllProducts();
+    }, 100);
 }
 
 function removeProduct(productId) {
     const productElement = document.getElementById(productId);
     if (productElement) {
         productElement.remove();
-        updateSelectedProducts();
+        // 商品削除後、全商品を再計算（値引きルールの適用のため）
+        setTimeout(() => {
+            recalculateAllProducts();
+        }, 100);
     }
 }
 
@@ -689,6 +735,37 @@ function calculateAll() {
     }
     for (let i = 1; i <= productCounter.basic; i++) {
         calculateBasicProduct(i);
+    }
+}
+
+// 全商品の価格を再計算（値引きルールの適用を含む）
+function recalculateAllProducts() {
+    if (isRecalculating) return; // 再計算中の場合はスキップ
+    isRecalculating = true;
+    
+    try {
+        // 通常商品を再計算
+        for (let i = 1; i <= productCounter.normal; i++) {
+            const category = document.getElementById(`normal-category-${i}`).value;
+            const item = document.getElementById(`normal-item-${i}`).value;
+            if (category && item) {
+                calculateNormalProductInternal(i); // 内部計算関数を使用
+            }
+        }
+        
+        // 基礎商品を再計算
+        for (let i = 1; i <= productCounter.basic; i++) {
+            const category = document.getElementById(`basic-category-${i}`).value;
+            const item = document.getElementById(`basic-item-${i}`).value;
+            if (category && item) {
+                calculateBasicProductInternal(i); // 内部計算関数を使用
+            }
+        }
+        
+        // 選択商品リストと合計を更新
+        updateSelectedProducts();
+    } finally {
+        isRecalculating = false;
     }
 }
 
@@ -710,6 +787,11 @@ function clearAllProducts() {
 
         // 結果値は0表示のまま、右パネルの選択商品リストも空に
         updateSelectedProducts();
+        
+        // 全商品リセット後、全商品を再計算（値引きルールの適用のため）
+        setTimeout(() => {
+            recalculateAllProducts();
+        }, 100);
     }
 }
 
