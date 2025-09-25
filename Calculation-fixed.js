@@ -455,6 +455,11 @@ function updateSelectedProducts() {
 
         if (category && item && quantity > 0) {
             const discount = parseFloat(document.getElementById(`normal-discount-${i}`).value) || 0;
+            // unitLabelを取得
+            const productsData = window.productsData || window.goodsData || {};
+            const productData = productsData[category] && productsData[category][item];
+            const unitLabel = productData ? productData.unitLabel : null;
+            
             selectedProducts.push({
                 type: 'normal',
                 number: i,
@@ -462,7 +467,8 @@ function updateSelectedProducts() {
                 item: item,
                 quantity: quantity,
                 discount: discount,
-                exTax: exTax
+                exTax: exTax,
+                unitLabel: unitLabel
             });
         }
     }
@@ -477,6 +483,11 @@ function updateSelectedProducts() {
 
         if (category && item && height && length > 0) {
             const discount = parseFloat(document.getElementById(`basic-discount-${i}`).value) || 0;
+            // unitLabelを取得
+            const kisoProductsData = window.kisoProductsData || {};
+            const productData = kisoProductsData[category] && kisoProductsData[category][item];
+            const unitLabel = productData ? productData.unitLabel : null;
+            
             selectedProducts.push({
                 type: 'basic',
                 number: i,
@@ -485,7 +496,8 @@ function updateSelectedProducts() {
                 height: height,
                 length: length,
                 discount: discount,
-                exTax: exTax
+                exTax: exTax,
+                unitLabel: unitLabel
             });
         }
     }
@@ -507,8 +519,16 @@ function updateSelectedProducts() {
                 } else {
                     qtyDisplay = '';
                 }
+                // 基礎商品の助数詞を追加
+                if (product.unitLabel && product.unitLabel !== null && product.unitLabel !== '') {
+                    qtyDisplay += product.unitLabel;
+                }
             } else {
                 qtyDisplay = product.quantity;
+                // 通常商品の助数詞を追加
+                if (product.unitLabel && product.unitLabel !== null && product.unitLabel !== '') {
+                    qtyDisplay += product.unitLabel;
+                }
             }
             let details = `数量: ${qtyDisplay} | ${product.type === 'normal' ? '通常商品' : '基礎商品'}`;
             
@@ -914,7 +934,8 @@ function copyToExcel() {
             quantity: quantityOut,
             height: product.height || '',
             discount: product.discount || 0,
-            amount: price
+            amount: price,
+            unitLabel: product.unitLabel || null
         });
         excelData.totalExTax += price;
     });
@@ -996,7 +1017,12 @@ function createClipboardText(data) {
     // 数量（スラッシュ区切り）
     let quantities = [];
     data.items.forEach(item => {
-        quantities.push(item.quantity);
+        let qty = item.quantity;
+        // 助数詞がある場合は追加
+        if (item.unitLabel && item.unitLabel !== null && item.unitLabel !== '') {
+            qty += item.unitLabel;
+        }
+        quantities.push(qty);
     });
     clipboardText += quantities.join('/') + ',';
     

@@ -30,6 +30,7 @@
           base: Number(d.pricing.base || 0),
           price: Number(d.pricing.unitPrice || 0),
           areaThreshold: Number(d.pricing.basicQty || 0),
+          unitLabel: d.unitLabel || null,
           _sort: sortIndex
         };
       }
@@ -55,6 +56,7 @@
         localKiso[category][itemName] = {
           '高さ別価格': heightMap,
           '基本長さ': basicLen,
+          unitLabel: d.unitLabel || null,
           _sort: sortIndex
         };
       }
