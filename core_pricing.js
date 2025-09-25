@@ -102,15 +102,35 @@
     if (!hData) return { ex: 0, inTax: 0 };
     var base = toNumber(hData['基本価格'], 0);
     var perLen = toNumber(hData['長さ加算'], 0);
-    var basicLen = toNumber(productData['基本長さ'], 0);
+    
+    // 高さごとの基本長さを優先、なければ商品全体の基本長さを使用
+    var basicLen = toNumber(hData['基本長さ'], 0);
+    if (!isFinite(basicLen) || basicLen === 0) {
+      basicLen = toNumber(productData['基本長さ'], 0);
+    }
+    
     // Firestoreなどで基本長さが未設定の場合のフォールバック
     if (!isFinite(basicLen) || basicLen === 0) {
-      basicLen = (String(category) === 'クラック') ? 1 : 20;
+      if (String(category) === 'クラック') {
+        basicLen = 1;
+      } else if (String(item) === '中基礎') {
+        // 中基礎の高さごとの基本長さ
+        if (String(height) === '30') {
+          basicLen = 20; // 30cmは20m
+        } else {
+          basicLen = 10; // その他の高さは10m
+        }
+      } else {
+        basicLen = 20; // その他の基礎商品
+      }
     }
     var len = toNumber(length, 0);
 
     var exTax = base;
     if (len > basicLen) exTax += (len - basicLen) * perLen;
+    
+    // デバッグ用ログ
+    console.log(`中基礎 ${height}cm calculation: base=${base}, len=${len}, basicLen=${basicLen}, perLen=${perLen}, exTax=${exTax}`);
 
     var discount = calculateDiscount(exTax, discountValue);
     var ex = Math.max(0, exTax - discount);

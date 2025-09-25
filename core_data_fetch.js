@@ -43,10 +43,15 @@
           var hConf = d.pricingByHeight[h] || {};
           heightMap[String(h)] = {
             '基本価格': Number(hConf.basicPrice || 0),
-            '長さ加算': Number(hConf.lengthUnitPrice || 0)
+            '長さ加算': Number(hConf.lengthUnitPrice || 0),
+            '基本長さ': Number(hConf.basicLength || 0) // 高さごとの基本長さを追加
           };
         });
         var basicLen = Number(d.basicLength || d.pricingByHeight.basicLength || 0);
+        // 中基礎の基本長さを正しい値に設定（高さごとの設定がない場合のフォールバック）
+        if (itemName === '中基礎' && basicLen === 0) {
+          basicLen = 10; // 中基礎のデフォルト基本長さ
+        }
         localKiso[category][itemName] = {
           '高さ別価格': heightMap,
           '基本長さ': basicLen,
@@ -66,8 +71,10 @@
       }
       try {
         var db = ensureFirebaseApp();
+        console.log('Attempting to connect to Firestore...');
         db.collection('products').where('status', '==', 'published').get()
           .then(function (snap) {
+            console.log('Firestore query successful, found', snap.size, 'documents');
             var built = buildLocalFromFirestore(snap.docs || []);
             // sortIndex マップも作成（カテゴリ→商品名→sortIndex）
             try {
@@ -88,9 +95,16 @@
             if (Object.keys(built.products).length > 0) {
               global.productsData = built.products;
               global.goodsData = built.products;
+              console.log('Firestore products data loaded:', Object.keys(built.products).length, 'categories');
             }
             if (Object.keys(built.kiso).length > 0) {
               global.kisoProductsData = built.kiso;
+              console.log('Firestore kiso data loaded:', Object.keys(built.kiso).length, 'categories');
+              // 中基礎の価格データをログ出力
+              if (built.kiso['新規工事'] && built.kiso['新規工事']['中基礎']) {
+                console.log('中基礎 pricing data from Firestore:', built.kiso['新規工事']['中基礎']);
+                console.log('中基礎 基本長さ:', built.kiso['新規工事']['中基礎']['基本長さ']);
+              }
             }
 
             // UIを更新（関数がグローバル定義の場合）
@@ -101,11 +115,13 @@
             resolve({ source: 'firestore', count: snap.size });
           })
           .catch(function (err) {
-            console.warn('Firestore fetch failed, fallback to local:', err);
+            console.error('Firestore fetch failed, fallback to local:', err);
+            console.log('Using local data instead');
             resolve({ source: 'fallback-local', products: global.productsData, kiso: global.kisoProductsData, error: String(err) });
           });
       } catch (e) {
-        console.warn('Firestore init failed, fallback to local:', e);
+        console.error('Firestore init failed, fallback to local:', e);
+        console.log('Using local data instead');
         resolve({ source: 'fallback-local', products: global.productsData, kiso: global.kisoProductsData, error: String(e) });
       }
     });
