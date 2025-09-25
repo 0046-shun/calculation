@@ -137,6 +137,14 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.nav-button.refresh-button {
+  background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+}
+
+.nav-button.reverse-button {
+  background: linear-gradient(135deg, var(--gray-600) 0%, var(--gray-700) 100%);
+}
+
 .nav-button.admin-button {
   background: linear-gradient(135deg, var(--accent-500) 0%, var(--accent-600) 100%);
 }

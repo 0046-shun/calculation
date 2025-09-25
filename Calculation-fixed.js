@@ -45,6 +45,74 @@ function setupEventListeners() {
     document.getElementById('copy-to-excel-button').addEventListener('click', copyToExcel);
 }
 
+// データ更新機能
+function refreshData() {
+    // ボタンを一時的に無効化
+    const refreshButton = document.querySelector('.refresh-button');
+    const originalText = refreshButton.textContent;
+    refreshButton.textContent = '🔄 更新中...';
+    refreshButton.disabled = true;
+    
+    try {
+        // Firestoreからデータを再読み込み
+        if (window.FEATURE_USE_FIRESTORE && window.CoreDataFetch && typeof window.CoreDataFetch.loadData === 'function') {
+            window.CoreDataFetch.loadData().then(() => {
+                // データ読み込み完了後、商品リストを再構築
+                loadProductData();
+                updateSelectedProducts();
+                
+                // ボタンを元に戻す
+                refreshButton.textContent = originalText;
+                refreshButton.disabled = false;
+                
+                // 成功メッセージを表示
+                showRefreshStatus('✅ データを更新しました');
+            }).catch((error) => {
+                console.error('データ更新エラー:', error);
+                refreshButton.textContent = originalText;
+                refreshButton.disabled = false;
+                showRefreshStatus('❌ データ更新に失敗しました');
+            });
+        } else {
+            // Firestoreが無効な場合は通常のリロード
+            window.location.reload();
+        }
+    } catch (error) {
+        console.error('データ更新エラー:', error);
+        refreshButton.textContent = originalText;
+        refreshButton.disabled = false;
+        showRefreshStatus('❌ データ更新に失敗しました');
+    }
+}
+
+// 更新ステータス表示
+function showRefreshStatus(message) {
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'refresh-status';
+    statusDiv.textContent = message;
+    statusDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1000;
+        font-size: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    `;
+    
+    document.body.appendChild(statusDiv);
+    
+    // 3秒後に削除
+    setTimeout(() => {
+        if (statusDiv.parentNode) {
+            statusDiv.parentNode.removeChild(statusDiv);
+        }
+    }, 3000);
+}
+
 // 現在フォーム上で選択中の商品（通常/基礎）から、ルール判定用の文脈を構築
 function buildSelectedContext() {
     const ctx = [];

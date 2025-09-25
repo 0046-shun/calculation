@@ -387,7 +387,8 @@
           html += '<tr class="comparison-row ' + (ok?'match':'mismatch') + '"><td colspan="5">' +
                    '<div class="comparison-details">' +
                    '<span>貼付金額: ' + pasted.toLocaleString() + '</span>' +
-                   '<span>計算金額: ' + lineSum.toLocaleString() + '</span>' +
+                   '<span>計算金額(税抜): ' + lineSum.toLocaleString() + '</span>' +
+                   '<span>計算金額(税込): ' + Math.round(lineSum * 1.1).toLocaleString() + '</span>' +
                    '<span class="difference">差額: ' + (pasted - lineSum).toLocaleString() + '</span>' +
                    '<span class="status">' + (ok ? '一致' : '不一致') + '</span>' +
                    '</div>' +

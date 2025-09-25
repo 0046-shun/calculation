@@ -134,8 +134,11 @@ p {
 
 /* ボタンコンテナ */
 .button-container {
-  text-align: center;
+  text-align: left;
   margin-bottom: var(--spacing-xl);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ボタンスタイル */
@@ -190,7 +193,7 @@ button:active {
 
 /* 結果表示エリア */
 #result-area {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   background: var(--background-secondary);
   padding: var(--spacing-xl);
