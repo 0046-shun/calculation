@@ -128,8 +128,8 @@
         return { category: c, item: name, data: items[name] };
       }
     }
-    return null;
-  }
+        return null;
+    }
 
   function calcExpected(row, ctx, productsData, kisoProductsData) {
     var name = row.name || '';
@@ -309,7 +309,7 @@
                 // 単位記号 m 等は無視して数値化
                 lengthOrCount = Number(String(hlen[2]).replace(/[^0-9.]/g,''));
                 displayQty = hlen[1] + '*' + hlen[2];
-              } else {
+                } else {
                 if (isCrack) {
                   // クラック単品: "30*2" 形式 or 同時: "2" だけ → 高さは基礎から借用
                   var count = isFinite(qtyPart) ? Number(qtyPart) : 1;
@@ -410,8 +410,8 @@
             checkBtn.click();
           });
         });
-      });
-    }
+    });
+}
     var clearBtn = document.getElementById('clear-button');
     if (clearBtn) {
       clearBtn.addEventListener('click', function () {
