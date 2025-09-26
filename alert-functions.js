@@ -30,6 +30,32 @@ const PRODUCT_RULES = [
         ]
     },
     {
+        name: 'カビと消毒',
+        message: '数量は消毒＞カビになっていますか？',
+        icon: '⚠️',
+        type: 'warning',
+        mainItem: { category: '消毒', item: 'カビ' }, // メインアイテム
+        secondaryItems: [ // 候補アイテム（複数可）
+            { category: '消毒', item: '新予防' },
+            { category: '消毒', item: '再' },
+            { category: '消毒', item: '切予防' },
+            { category: '消毒', item: '増築予防' }
+        ]
+    },
+    {
+        name: 'カビとそのほか消毒',
+        message: '数量は消毒＞カビになっていますか？',
+        icon: '⚠️',
+        type: 'warning',
+        mainItem: { category: 'そのほか', item: 'カビ' }, // メインアイテム
+        secondaryItems: [ // 候補アイテム（複数可）
+            { category: '消毒', item: '新予防' },
+            { category: '消毒', item: '再' },
+            { category: '消毒', item: '切予防' },
+            { category: '消毒', item: '増築予防' }
+        ]
+    },
+    {
         name: '過料販売規制',
         message: '過料販売ルールに則っていますか？',
         icon: '⚠️',
