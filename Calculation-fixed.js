@@ -566,6 +566,8 @@ function updateSelectedProducts() {
     // 選択状態の視覚化を更新
     updateProductSelectionVisuals();
     updateTotal();
+
+    checkProductSelectionRules();
 }
 
 function updateProductSelectionVisuals() {

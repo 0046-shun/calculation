@@ -444,6 +444,42 @@ body {
   text-align: center;
 }
 
+.alert-message {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border: 1px solid var(--primary-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-height: 60px;
+}
+
+.alert-icon {
+  font-size: var(--text-lg);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--primary-800);
+  margin-bottom: var(--space-1);
+}
+
+.alert-text {
+  font-size: var(--text-xs);
+  color: var(--primary-600);
+  line-height: 1.4;
+}
+
 /* 右パネル - 商品選択（可変幅） */
 .product-selection-panel {
   background: white;
