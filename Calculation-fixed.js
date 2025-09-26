@@ -918,7 +918,7 @@ function copyToExcel() {
                 productName += `▲${product.discount}%`;
             } else {
                 // 3桁以上は金額として表示
-                productName += `▲${product.discount.toLocaleString()}円`;
+                productName += `▲${product.discount}円`;
             }
         }
 
