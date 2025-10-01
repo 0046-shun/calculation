@@ -54,15 +54,32 @@
   function calculateKabiPrice(quantity, selectedProductsContext, productsData) {
     var q = toNumber(quantity, 0);
     if (q <= 0) return 0;
-    // defaults
+    
+    // まずはコアルール（商品名対商品名）の単価上書きを優先
+    try {
+      if (global.CoreRules && typeof global.CoreRules.getUnitOverride === 'function') {
+        // そのほか/カビ の場合
+        var override = global.CoreRules.getUnitOverride('そのほか', 'カビ', selectedProductsContext || []);
+        if (isFinite(override) && Number(override) > 0) {
+          return Number(override) * q;
+        }
+        // 消毒/カビ の場合
+        override = global.CoreRules.getUnitOverride('消毒', 'カビ', selectedProductsContext || []);
+        if (isFinite(override) && Number(override) > 0) {
+          return Number(override) * q;
+        }
+      }
+    } catch (_) {}
+    
+    // フォールバック: 従来のロジック
     var unit = 2500;
     var hasShodoku = selectedProductsContext.some(function (p) { return p.category === '消毒'; });
-    var hasKisoOr60OrDC2 = selectedProductsContext.some(function (p) {
-      return p.category === '基礎' || includesAny(p.item, ['DC2', '60']);
+    var hasKiso = selectedProductsContext.some(function (p) {
+      return p.category === '基礎';
     });
-    // 優先度: 消毒(1000)優先、次に DC2/60/基礎(1700)
+    // 優先度: 消毒(1000)優先、次に 基礎(1700)
     if (hasShodoku) unit = 1000;
-    else if (hasKisoOr60OrDC2) unit = 1700;
+    else if (hasKiso) unit = 1700;
     return unit * q;
   }
 

@@ -51,8 +51,7 @@ const productsData = {
           { "type": "category", "value": "消毒" }
       ],
       "discount2Conditions": [
-          { "type": "category", "value": "基礎" },
-          { "type": "contains", "values": ["DC2", "60"] }
+          { "type": "category", "value": "基礎" }
       ],
       "discountPrice": 1000,
       "discount2Price": 1700
@@ -228,8 +227,7 @@ const productsData = {
             { "type": "category", "value": "消毒" }
         ],
         "discount2Conditions": [
-            { "type": "category", "value": "基礎" },
-            { "type": "contains", "values": ["DC2", "60"] }
+            { "type": "category", "value": "基礎" }
         ],
         "discountPrice": 1000,
         "discount2Price": 1700
