@@ -360,9 +360,9 @@ function calculateNormalProductInternal(productNumber) {
         exTax = 0; inTax = 0;
     }
 
-    // 結果を表示
-    document.getElementById(`normal-result-ex-${productNumber}`).textContent = exTax.toLocaleString() + '円';
-    document.getElementById(`normal-result-in-${productNumber}`).textContent = inTax.toLocaleString() + '円';
+    // 結果を表示（小数点以下は表示しない）
+    document.getElementById(`normal-result-ex-${productNumber}`).textContent = Math.floor(exTax).toLocaleString() + '円';
+    document.getElementById(`normal-result-in-${productNumber}`).textContent = Math.floor(inTax).toLocaleString() + '円';
 
     // 選択商品リストに追加
     updateSelectedProducts();
@@ -437,9 +437,9 @@ function calculateBasicProductInternal(productNumber) {
         exTax = 0; inTax = 0;
     }
 
-    // 結果を表示
-    document.getElementById(`basic-result-ex-${productNumber}`).textContent = exTax.toLocaleString() + '円';
-    document.getElementById(`basic-result-in-${productNumber}`).textContent = inTax.toLocaleString() + '円';
+    // 結果を表示（小数点以下は表示しない）
+    document.getElementById(`basic-result-ex-${productNumber}`).textContent = Math.floor(exTax).toLocaleString() + '円';
+    document.getElementById(`basic-result-in-${productNumber}`).textContent = Math.floor(inTax).toLocaleString() + '円';
 
     // 選択商品リストに追加
     updateSelectedProducts();
@@ -605,7 +605,8 @@ function updateTotal() {
 
     // 選択商品の合計を計算
     selectedProducts.forEach(product => {
-        const price = parseFloat(product.exTax.replace(/[^\d]/g, '')) || 0;
+        // 小数点を含む数値を正しく抽出するため、カンマと円マークのみを除去
+        const price = parseFloat(product.exTax.replace(/[,円]/g, '')) || 0;
         totalExTax += price;
     });
 
@@ -615,7 +616,7 @@ function updateTotal() {
         let kisoSum = 0;
         selectedProducts.forEach(p=>{
             if (p.type === 'basic' && p.category === '新規工事') {
-                const amt = parseFloat((p.exTax||'').replace(/[^\d]/g,'')) || 0;
+                const amt = parseFloat((p.exTax||'').replace(/[,円]/g,'')) || 0;
                 if (p.item === '外基礎') { hasGai = true; kisoSum += amt; }
                 if (p.item === '中基礎') { hasNaka = true; kisoSum += amt; }
             }
@@ -633,8 +634,8 @@ function updateTotal() {
 
     const totalInTax = Math.floor(totalExTax * 1.1);
 
-    // 合計を表示
-    document.getElementById('total-ex-tax').textContent = totalExTax.toLocaleString() + '円';
+    // 合計を表示（小数点以下は表示しない）
+    document.getElementById('total-ex-tax').textContent = Math.floor(totalExTax).toLocaleString() + '円';
     document.getElementById('total-in-tax').textContent = totalInTax.toLocaleString() + '円';
 }
 
@@ -908,7 +909,7 @@ function copyToExcel() {
 
     // 選択された商品を配列に追加
     selectedProducts.forEach(product => {
-        const price = parseFloat(product.exTax.replace(/[^\d]/g, '')) || 0;
+        const price = parseFloat(product.exTax.replace(/[,円]/g, '')) || 0;
 
         // 商品名の構築（小項目名 + 値引き情報）
         let productName = product.item;
