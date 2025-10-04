@@ -135,7 +135,7 @@ function loadProductData() {
     // 通常商品のカテゴリを読み込み（1-6）
     const preferred = ['消毒','床下機器','天井機器','断熱遮熱','基礎関連','そのほか','害虫','旧商品','新規工事','追加工事','クラック'];
     const orderMap = new Map(preferred.map((v,i)=>[v,i]));
-    const normalCategories = Object.keys(productsData).sort((a,b)=>{
+    const normalCategories = Object.keys(window.productsData || productsData).sort((a,b)=>{
         const ia = orderMap.has(a)?orderMap.get(a):Number.MAX_SAFE_INTEGER;
         const ib = orderMap.has(b)?orderMap.get(b):Number.MAX_SAFE_INTEGER;
         if (ia!==ib) return ia-ib;
@@ -156,7 +156,7 @@ function loadProductData() {
     }
 
     // 基礎商品のカテゴリを読み込み（1-3）
-    const basicCategories = Object.keys(kisoProductsData).sort((a,b)=>{
+    const basicCategories = Object.keys(window.kisoProductsData || kisoProductsData).sort((a,b)=>{
         const ia = orderMap.has(a)?orderMap.get(a):Number.MAX_SAFE_INTEGER;
         const ib = orderMap.has(b)?orderMap.get(b):Number.MAX_SAFE_INTEGER;
         if (ia!==ib) return ia-ib;
@@ -210,7 +210,7 @@ function updateNormalItems(productNumber) {
     if (categorySelect.value) {
         const cat = categorySelect.value;
         const siMap = (window.productsSortIndexMap && window.productsSortIndexMap[cat]) || null;
-        const items = Object.keys(productsData[cat]).sort((a,b)=>{
+        const items = Object.keys((window.productsData || productsData)[cat]).sort((a,b)=>{
             // 1) Firestore の sortIndex マップ
             const sai = siMap && (typeof siMap[a] === 'number') ? siMap[a] : null;
             const sbi = siMap && (typeof siMap[b] === 'number') ? siMap[b] : null;
@@ -218,8 +218,8 @@ function updateNormalItems(productNumber) {
             if (sai!=null) return -1;
             if (sbi!=null) return 1;
             // 2) productsData 内の _sort（後方互換）
-            const sa = (productsData[cat][a]||{})._sort;
-            const sb = (productsData[cat][b]||{})._sort;
+            const sa = ((window.productsData || productsData)[cat][a]||{})._sort;
+            const sb = ((window.productsData || productsData)[cat][b]||{})._sort;
             if (Number.isFinite(sa) && Number.isFinite(sb)) return sa - sb;
             if (Number.isFinite(sa)) return -1;
             if (Number.isFinite(sb)) return 1;
@@ -253,14 +253,14 @@ function updateBasicItems(productNumber) {
     if (categorySelect.value) {
         const cat = categorySelect.value;
         const siMap = (window.productsSortIndexMap && window.productsSortIndexMap[cat]) || null;
-        const items = Object.keys(kisoProductsData[cat]).sort((a,b)=>{
+        const items = Object.keys((window.kisoProductsData || kisoProductsData)[cat]).sort((a,b)=>{
             const sai = siMap && (typeof siMap[a] === 'number') ? siMap[a] : null;
             const sbi = siMap && (typeof siMap[b] === 'number') ? siMap[b] : null;
             if (sai!=null && sbi!=null) return sai - sbi;
             if (sai!=null) return -1;
             if (sbi!=null) return 1;
-            const sa = (kisoProductsData[cat][a]||{})._sort;
-            const sb = (kisoProductsData[cat][b]||{})._sort;
+            const sa = ((window.kisoProductsData || kisoProductsData)[cat][a]||{})._sort;
+            const sb = ((window.kisoProductsData || kisoProductsData)[cat][b]||{})._sort;
             if (Number.isFinite(sa) && Number.isFinite(sb)) return sa - sb;
             if (Number.isFinite(sa)) return -1;
             if (Number.isFinite(sb)) return 1;
