@@ -334,12 +334,29 @@
                 global.CorePricing.calculateProductLine({ type:'kiso', category:category, item:item, height:height, length:lengthOrCount, discountValue:discountValue, selectedProductsContext:lineCtx, productsData:productsData, kisoProductsData:kisoProductsData })
                 : { ex:0 };
               exVal = Number(resK.ex)||0;
-              // 追加工事では Firestore 側の品名が『外基礎追/中基礎追』の場合があるためフォールバック
-              if (exVal === 0 && category === '追加工事' && global.CorePricing && global.CorePricing.calculateProductLine) {
-                var altItem = item + '追';
-                var resAlt = global.CorePricing.calculateProductLine({ type:'kiso', category:category, item:altItem, height:height, length:lengthOrCount, discountValue:discountValue, selectedProductsContext:lineCtx, productsData:productsData, kisoProductsData:kisoProductsData });
-                exVal = Number((resAlt||{}).ex) || 0;
-                if (exVal > 0) { item = altItem; }
+              
+              // Firestore 側の品名が異なる場合のフォールバック処理
+              if (exVal === 0 && global.CorePricing && global.CorePricing.calculateProductLine) {
+                var altItem = null;
+                var altCategory = category;
+                
+                if (category === '追加工事') {
+                  // 追加工事では『外基礎追/中基礎追』の場合がある
+                  altItem = item + '追';
+                } else if (category === '新規工事' && item === '中基礎') {
+                  // 新規工事の中基礎でヒットしない場合、追加工事の中基礎追を試す
+                  altItem = item + '追';
+                  altCategory = '追加工事';
+                }
+                
+                if (altItem) {
+                  var resAlt = global.CorePricing.calculateProductLine({ type:'kiso', category:altCategory, item:altItem, height:height, length:lengthOrCount, discountValue:discountValue, selectedProductsContext:lineCtx, productsData:productsData, kisoProductsData:kisoProductsData });
+                  exVal = Number((resAlt||{}).ex) || 0;
+                  if (exVal > 0) { 
+                    item = altItem; 
+                    category = altCategory;
+                  }
+                }
               }
               if (item==='外基礎') hasOuter=true; if(item==='中基礎') hasInner=true;
               sys = { category:category, item:item };
