@@ -55,13 +55,7 @@
     var q = toNumber(quantity, 0);
     if (q <= 0) return 0;
     
-    // 最優先: 消毒がある場合は1000円（コアルールよりも優先）
-    var hasShodoku = selectedProductsContext.some(function (p) { return p.category === '消毒'; });
-    if (hasShodoku) {
-      return 1000 * q;
-    }
-    
-    // 次にコアルール（商品名対商品名）の単価上書きを適用
+    // コアルール（商品名対商品名）の単価上書きを適用
     try {
       if (global.CoreRules && typeof global.CoreRules.getUnitOverride === 'function') {
         // そのほか/カビ の場合
@@ -79,16 +73,26 @@
     
     // フォールバック: 従来のロジック（最安価格を維持）
     var unit = 2500;
+    
+    // 基礎がある場合は1700円
     var hasKiso = selectedProductsContext.some(function (p) {
       return p.category === '基礎';
     });
-    var hasMJ60OrSO2 = selectedProductsContext.some(function (p) {
-      return includesAny(p.item, ['MJ60買', 'MJ60新', 'SO260買', 'SO260新', 'SO2(DC2)買', 'SO2(DC2)新']);
+    
+    // MJ60系とSO2系が同時に選択された場合のみ1700円
+    var hasMJ60 = selectedProductsContext.some(function (p) {
+      return includesAny(p.item, ['MJ60買', 'MJ60新']);
+    });
+    var hasSO2 = selectedProductsContext.some(function (p) {
+      return includesAny(p.item, ['SO2買', 'SO2新', 'SO260買', 'SO260新', 'SO2(DC2)買', 'SO2(DC2)新']);
     });
     
-    // 最安価格を維持するロジック（消毒は既に処理済み）
-    if (hasKiso || hasMJ60OrSO2) {
-      // 基礎またはMJ60/SO2系がある場合は1700円
+    // 条件判定
+    if (hasKiso) {
+      // 基礎がある場合は1700円
+      unit = 1700;
+    } else if (hasMJ60 && hasSO2) {
+      // MJ60系とSO2系が同時に選択された場合のみ1700円
       unit = 1700;
     }
     // どちらもない場合は2500円（デフォルト）
