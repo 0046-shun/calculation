@@ -44,11 +44,13 @@
     var threshold = productData.areaThreshold;
     if (typeof threshold === 'number' && isFinite(threshold)) {
       if (q > threshold) {
-        return base + (q - threshold) * unit;
+        // 浮動小数点誤差を防ぐため、計算結果を丸める
+        return Math.round(base + (q - threshold) * unit);
       }
       return base;
     }
-    return base + q * unit;
+    // 浮動小数点誤差を防ぐため、計算結果を丸める
+    return Math.round(base + q * unit);
   }
 
   function calculateKabiPrice(quantity, selectedProductsContext, productsData) {
@@ -216,7 +218,10 @@
     var len = toNumber(length, 0);
 
     var exTax = base;
-    if (len > basicLen) exTax += (len - basicLen) * perLen;
+    if (len > basicLen) {
+      // 浮動小数点誤差を防ぐため、計算結果を丸める
+      exTax = Math.round(exTax + (len - basicLen) * perLen);
+    }
 
     var discount = calculateDiscount(exTax, discountValue);
     var ex = Math.max(0, exTax - discount);
