@@ -760,6 +760,8 @@ function addBasicProduct() {
                         <option value="40">40cm</option>
                         <option value="50">50cm</option>
                         <option value="60">60cm</option>
+                        <option value="70">70cm</option>
+                        <option value="80">80cm</option>
                     </select>
                 </div>
                 <div class="form-group">
