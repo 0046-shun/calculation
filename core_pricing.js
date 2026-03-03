@@ -11,7 +11,8 @@
     var d = toNumber(discountValue, 0);
     if (d <= 0) return 0;
     // percentage (<100) or fixed (>=100), cap at exTax
-    var amount = d < 100 ? ex * (d / 100) : d;
+    // 値引き後の金額を切り上げるため、値引き額は切り捨て
+    var amount = d < 100 ? Math.floor(ex * (d / 100)) : d;
     if (amount > ex) amount = ex;
     return amount;
   }
@@ -224,7 +225,7 @@
     }
 
     var discount = calculateDiscount(exTax, discountValue);
-    var ex = Math.max(0, exTax - discount);
+    var ex = Math.ceil(Math.max(0, exTax - discount));
     var inTax = Math.floor(ex * 1.1);
     return { ex: ex, inTax: inTax };
   }
@@ -264,7 +265,7 @@
     }
 
     var discount = calculateDiscount(exTax, discountValue);
-    var ex = Math.max(0, exTax - discount);
+    var ex = Math.ceil(Math.max(0, exTax - discount));
     var inTax = Math.floor(ex * 1.1);
     
     return { ex: ex, inTax: inTax };
