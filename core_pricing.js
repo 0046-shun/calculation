@@ -54,27 +54,38 @@
     return Math.round(base + q * unit);
   }
 
-  function calculateKabiPrice(quantity, selectedProductsContext, productsData) {
+  // kabiLineCategory: 見積行の大項目「そのほか」または「消毒」。
+  // kabiProductData: 行に対応する productsData[大項目].カビ（未指定なら kabiLineCategory から解決）
+  // 消毒行: co-occur 次は discountPrice（例 1000）を用い、基礎/MJ60+SO2 向け 1700 階段は使わない
+  function calculateKabiPrice(quantity, selectedProductsContext, productsData, kabiLineCategory, kabiProductData) {
     var q = toNumber(quantity, 0);
     if (q <= 0) return 0;
-    
+    var kabiData = kabiProductData;
+    if (!kabiData && productsData && (kabiLineCategory === 'そのほか' || kabiLineCategory === '消毒')) {
+      var c = productsData[kabiLineCategory];
+      if (c && c['カビ']) kabiData = c['カビ'];
+    }
+
     // コアルール（商品名対商品名）の単価上書きを適用
     try {
-      if (global.CoreRules && typeof global.CoreRules.getUnitOverride === 'function') {
-        // そのほか/カビ の場合
-        var override = global.CoreRules.getUnitOverride('そのほか', 'カビ', selectedProductsContext || []);
-        if (isFinite(override) && Number(override) > 0) {
-          return Number(override) * q;
-        }
-        // 消毒/カビ の場合
-        override = global.CoreRules.getUnitOverride('消毒', 'カビ', selectedProductsContext || []);
+      if (global.CoreRules && typeof global.CoreRules.getUnitOverride === 'function' &&
+          (kabiLineCategory === 'そのほか' || kabiLineCategory === '消毒')) {
+        var override = global.CoreRules.getUnitOverride(
+          kabiLineCategory, 'カビ', selectedProductsContext || []);
         if (isFinite(override) && Number(override) > 0) {
           return Number(override) * q;
         }
       }
     } catch (_) {}
     
-    // フォールバック: 従来のロジック（最安価格を維持）
+    // 消毒/カビ: 商品定義の discountPrice を優先（他区分のカビ 1700 階段で上書きしない）
+    if (kabiLineCategory === '消毒') {
+      var uSho = kabiData ? toNumber(kabiData.discountPrice, 0) : 0;
+      if (!isFinite(uSho) || uSho <= 0) uSho = 1000;
+      return uSho * q;
+    }
+    
+    // フォールバック: そのほか/カビ — 従来のロジック
     var unit = 2500;
     
     // 基礎がある場合は1700円
@@ -257,7 +268,7 @@
     var exTax = 0;
 
     if ((category === 'そのほか' && item === 'カビ') || (category === '消毒' && item === 'カビ')) {
-      exTax = calculateKabiPrice(quantity, selectedProductsContext, productsData);
+      exTax = calculateKabiPrice(quantity, selectedProductsContext, productsData, category, productData);
     } else if (category === '床下機器' && item === 'SO2買') {
       exTax = calculateSO2BuyPrice(quantity, selectedProductsContext, productData);
     } else {
