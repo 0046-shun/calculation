@@ -151,54 +151,27 @@
     var productData = kisoProductsData[category][item];
     var heights = productData['高さ別価格'] || {};
     
-    // 高さのヒットロジック: 完全一致 → 範囲内ヒット
+    // 高さのヒットロジック: 完全一致 → 入力値以上の最小高さクラス（45cmなら50cm）
     var hData = heights[String(height)] || heights[height];
+    var selectedHeight = hData ? toNumber(height, 0) : 0;
     if (!hData) {
-      // 完全一致しない場合、範囲内でヒットする高さを探す
+      // 完全一致しない場合、切り上げで該当する高さを探す
       var heightNum = toNumber(height, 0);
       var availableHeights = Object.keys(heights).map(function(h) { return toNumber(h, 0); }).sort(function(a, b) { return a - b; });
-      
-      // 正しい範囲判定: 入力高さがその範囲内にある高さを探す
-      // 30cm: 30cm以下, 40cm: 31-40cm, 50cm: 41-50cm, 60cm: 51-60cm, 70cm: 61-70cm, 80cm: 71-80cm
+
       for (var i = 0; i < availableHeights.length; i++) {
         var rangeHeight = availableHeights[i];
-        var nextHeight = (i < availableHeights.length - 1) ? availableHeights[i + 1] : Infinity;
-        
-        // 30cmの場合は30cm以下
-        if (rangeHeight === 30) {
-          if (heightNum <= 30) {
-            hData = heights[String(rangeHeight)];
-            break;
-          }
-        } else {
-          // その他の範囲: rangeHeight <= heightNum < nextHeight
-          // ただし、30cmより大きい場合は31cm以上として扱う
-          var minHeight = (rangeHeight === 40) ? 31 : rangeHeight;
-          if (heightNum >= minHeight && heightNum < nextHeight) {
-            hData = heights[String(rangeHeight)];
-            break;
-          }
-        }
-        // 最後の範囲（最大高さ）の場合: rangeHeight <= heightNum
-        if (i === availableHeights.length - 1 && heightNum >= rangeHeight) {
+        if (heightNum <= rangeHeight) {
+          selectedHeight = rangeHeight;
           hData = heights[String(rangeHeight)];
           break;
         }
       }
-      
-      // デバッグ: 39cmの場合の動作確認
-      if (heightNum === 39) {
-        console.log('39cmデバッグ:', {
-          heightNum: heightNum,
-          availableHeights: availableHeights,
-          selectedHeight: hData ? Object.keys(heights).find(function(k) { return heights[k] === hData; }) : 'none'
-        });
-      }
-      
-      // どの範囲にも該当しない場合、最小の高さ（30cm以下）を適用
+
+      // 最大高さを超える場合は最大クラスを適用
       if (!hData && availableHeights.length > 0) {
-        var minHeight = availableHeights[0];
-        hData = heights[String(minHeight)];
+        selectedHeight = availableHeights[availableHeights.length - 1];
+        hData = heights[String(selectedHeight)];
       }
     }
     
@@ -218,7 +191,7 @@
         basicLen = 1;
       } else if (String(item) === '中基礎') {
         // 中基礎の高さごとの基本長さ
-        if (String(height) === '30') {
+        if (selectedHeight === 30) {
           basicLen = 20; // 30cmは20m
         } else {
           basicLen = 10; // その他の高さは10m
