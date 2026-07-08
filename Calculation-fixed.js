@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
+    // 固定額オプション（一般管理費・離島手数料など）のチェックボックスを生成
+    renderFixedFeeOptions();
+
     // 商品データを読み込み
     loadProductData();
     // Firestore からの読み込み（成功時は core_data_fetch 側で再度 loadProductData を呼ぶ）
@@ -32,17 +35,51 @@ function setupEventListeners() {
     // 商品追加ボタン
     document.getElementById('add-product-button').addEventListener('click', addNewProduct);
     
-    // 計算ボタン
-    document.getElementById('calculate-button').addEventListener('click', calculateAll);
-    
     // 全削除ボタン
     document.getElementById('clear-all-button').addEventListener('click', clearAllProducts);
     
-    // 管理費チェックボックス
-    document.getElementById('management-fee-checkbox').addEventListener('change', updateTotal);
+    // 固定額オプションのチェックボックス
+    FixedFees.options.forEach(opt => {
+        const checkbox = document.getElementById(FixedFees.checkboxId(opt));
+        if (checkbox) checkbox.addEventListener('change', updateTotal);
+    });
+
     
     // Excel連携ボタン
     document.getElementById('copy-to-excel-button').addEventListener('click', copyToExcel);
+}
+
+// 固定額オプションのチェックボックスを fixed_fees.js の定義から生成
+function renderFixedFeeOptions() {
+    const container = document.getElementById('fixed-fee-options');
+    if (!container) return;
+    container.innerHTML = '';
+    FixedFees.options.forEach(opt => {
+        const id = FixedFees.checkboxId(opt);
+        const row = document.createElement('div');
+        row.className = 'fixed-fee-item';
+        row.innerHTML = `
+            <input type="checkbox" id="${id}" ${opt.defaultChecked ? 'checked' : ''}>
+            <label for="${id}">${opt.label} (${opt.amount.toLocaleString()}円)</label>
+        `;
+        container.appendChild(row);
+    });
+}
+
+// チェックされている固定額オプションの定義一覧を返す
+function getCheckedFixedFees() {
+    return FixedFees.options.filter(opt => {
+        const checkbox = document.getElementById(FixedFees.checkboxId(opt));
+        return checkbox && checkbox.checked;
+    });
+}
+
+// Excel連携用のトークン一覧（離島などの商品系を先に、管有は従来通り末尾）
+function fixedFeeTokens(fees) {
+    const list = fees || [];
+    const products = list.filter(f => f.isProduct).map(f => f.token);
+    const others = list.filter(f => !f.isProduct).map(f => f.token);
+    return products.concat(others);
 }
 
 // データ更新機能
@@ -626,11 +663,10 @@ function updateTotal() {
         }
     })();
 
-    // 管理費を追加
-    const managementFeeCheckbox = document.getElementById('management-fee-checkbox');
-    if (managementFeeCheckbox.checked) {
-        totalExTax += 20000;
-    }
+    // 固定額オプション（一般管理費・離島手数料など）を追加
+    getCheckedFixedFees().forEach(opt => {
+        totalExTax += opt.amount;
+    });
 
     const totalInTax = Math.floor(totalExTax * 1.1);
 
@@ -826,16 +862,6 @@ function removeProduct(productId) {
     }
 }
 
-function calculateAll() {
-    // すべての商品を再計算
-    for (let i = 1; i <= productCounter.normal; i++) {
-        calculateNormalProduct(i);
-    }
-    for (let i = 1; i <= productCounter.basic; i++) {
-        calculateBasicProduct(i);
-    }
-}
-
 // 全商品の価格を再計算（値引きルールの適用を含む）
 function recalculateAllProducts() {
     if (isRecalculating) return; // 再計算中の場合はスキップ
@@ -901,12 +927,15 @@ function copyToExcel() {
     }
 
     // データを準備
+    const checkedFees = getCheckedFixedFees();
     const excelData = {
         timestamp: new Date().toISOString(),
         items: [],
         totalExTax: 0,
         totalInTax: 0,
-        managementFee: document.getElementById('management-fee-checkbox').checked
+        // VBA互換のため一般管理費のフラグは維持
+        managementFee: checkedFees.some(opt => opt.id === 'management-fee'),
+        fixedFees: checkedFees
     };
 
     // 選択された商品を配列に追加
@@ -967,10 +996,10 @@ function copyToExcel() {
         }
     })();
 
-    // 管理費を追加
-    if (excelData.managementFee) {
-        excelData.totalExTax += 20000;
-    }
+    // 固定額オプション（一般管理費・離島手数料など）を追加
+    checkedFees.forEach(opt => {
+        excelData.totalExTax += opt.amount;
+    });
 
     excelData.totalInTax = Math.floor(excelData.totalExTax * 1.1);
 
@@ -983,7 +1012,7 @@ function copyToExcel() {
         const namesJoined = (function(){
             const arr = [];
             excelData.items.forEach(it=> arr.push(it.item));
-            if (excelData.managementFee) arr.push('管有');
+            fixedFeeTokens(excelData.fixedFees).forEach(t=> arr.push(t));
             return arr.join('・');
         })();
         const quantitiesJoined = excelData.items.map(it=> it.quantity).join('/');
@@ -1017,10 +1046,10 @@ function createClipboardText(data) {
         productNames.push('(外基礎・中基礎)▲ｾｯﾄ');
     }
     
-    // 管理費がある場合は最後に「管有」を追加
-    if (data.managementFee) {
-        productNames.push('管有');
-    }
+    // チェックされた固定額オプションのトークンを末尾に追加（管有は従来通り最後）
+    fixedFeeTokens(data.fixedFees).forEach(token => {
+        productNames.push(token);
+    });
     
     clipboardText += productNames.join('・') + ',';
     

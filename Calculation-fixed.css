@@ -297,11 +297,11 @@ body {
   font-style: italic;
 }
 
-/* 管理費 */
-.management-fee {
+/* 固定額オプション（一般管理費・離島手数料など） */
+.fixed-fee-options {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-2);
   padding: var(--space-4);
   background: var(--accent-50);
   border: 1px solid var(--accent-200);
@@ -309,13 +309,19 @@ body {
   margin-bottom: var(--space-6);
 }
 
-.management-fee input[type="checkbox"] {
+.fixed-fee-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.fixed-fee-item input[type="checkbox"] {
   width: 18px;
   height: 18px;
   accent-color: var(--accent-500);
 }
 
-.management-fee label {
+.fixed-fee-item label {
   font-weight: 500;
   color: var(--gray-700);
   cursor: pointer;
@@ -359,7 +365,7 @@ body {
 /* アクションボタン */
 .action-buttons {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-3);
 }
 

@@ -21,7 +21,7 @@
                 <button class="nav-button reverse-button" onclick="window.location.href='./ReverseCheck.html'">
                     🔍 逆計算チェック
                 </button>
-                <button class="nav-button admin-button" onclick="window.location.href='./admin.html'">
+                <button class="nav-button admin-button" onclick="window.open('./admin.html', '_blank')">
                     ⚙️ 管理画面
                 </button>
             </div>
@@ -46,13 +46,8 @@
                 </ul>
             </div>
 
-            <!-- 管理費 -->
-            <div class="management-fee">
-                <input type="checkbox" id="management-fee-checkbox" checked>
-                <label for="management-fee-checkbox">
-                    一般管理費 (20,000円)
-                </label>
-            </div>
+            <!-- 固定額オプション（一般管理費・離島手数料など。fixed_fees.js の定義から動的生成） -->
+            <div class="fixed-fee-options" id="fixed-fee-options"></div>
 
             <!-- 合計金額 -->
             <div class="total-section">
@@ -70,9 +65,6 @@
             <div class="action-buttons">
                 <button class="action-button secondary" id="add-product-button">
                     ➕ 商品追加
-                </button>
-                <button class="action-button primary" id="calculate-button">
-                    🧮 計算実行
                 </button>
             </div>
 
@@ -573,6 +565,7 @@
     </script>
     <script src="./core_pricing.js"></script>
     <script src="./core_utils.js"></script>
+    <script src="./fixed_fees.js"></script>
     <script src="./Calculation-fixed.js"></script>
     <script src="./alert-functions.js"></script>
 </body>

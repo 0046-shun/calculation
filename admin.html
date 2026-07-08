@@ -17,12 +17,16 @@
         .right { text-align: right; }
         .danger { background: #ef4444; color:#fff; border: none; }
         .primary { background: #2563eb; color:#fff; border: none; }
+        .nav-link { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.5); cursor: pointer; }
+        .nav-link:hover { background: rgba(255,255,255,.3); }
     </style>
 </head>
 <body>
     <header>
         <div>管理者画面（商品管理）</div>
-        <div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <button class="nav-link" onclick="window.location.href='./Calculation-fixed.html'">💰 価格シミュレータ</button>
+            <button class="nav-link" onclick="window.location.href='./ReverseCheck.html'">🔍 逆計算チェック</button>
             <button id="signin" class="primary">Googleでサインイン</button>
             <button id="signout" class="danger" style="display:none">サインアウト</button>
         </div>

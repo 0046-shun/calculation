@@ -133,9 +133,10 @@
 
   function calcExpected(row, ctx, productsData, kisoProductsData) {
     var name = row.name || '';
-    // 管有
-    if (name.indexOf('管有') !== -1) {
-      return { ex: 20000, inTax: 22000 };
+    // 固定額オプション（管有など商品マスタに無いもの）
+    var standaloneFee = (global.FixedFees && global.FixedFees.findStandalone) ? global.FixedFees.findStandalone(name) : null;
+    if (standaloneFee) {
+      return { ex: standaloneFee.amount, inTax: Math.floor(standaloneFee.amount * 1.1) };
     }
     // 基礎/クラック判定
     var isKiso = /(外基礎|中基礎|クラック|外クラ|中片クラ|中両クラ)/.test(name);
@@ -216,7 +217,7 @@
             var nm = pn.trim(); if (!nm) return;
             var baseNm = nm.replace(/\(外基礎・中基礎\)▲セット|（外基礎・中基礎）▲セット|▲JA|▲[0-9.,]+\s*[%％円]?/g,'').trim();
             var isK = /(外基礎|中基礎|クラック|外クラ|中片クラ|中両クラ)/.test(nm);
-            if (nm.indexOf('管有') !== -1) return; // 管理費は文脈から除外
+            if (global.FixedFees && global.FixedFees.findStandalone && global.FixedFees.findStandalone(nm)) return; // 管理費等の固定額オプションは文脈から除外
             if (isK){
               var cat = /(クラック|外クラ|中片クラ|中両クラ)/.test(nm) ? 'クラック' : (nm.indexOf('追')!==-1 ? '追加工事' : '新規工事');
               var it = '外基礎';
@@ -277,10 +278,11 @@
             var displayQty = '';
             var exVal = 0;
 
-            if (name.indexOf('管有') !== -1) {
-              sys = { category:'管理費', item:'一般管理費' };
+            var partFee = (global.FixedFees && global.FixedFees.findStandalone) ? global.FixedFees.findStandalone(name) : null;
+            if (partFee) {
+              sys = { category: partFee.category, item: partFee.label };
               displayQty = '';
-              exVal = 20000; // 固定
+              exVal = partFee.amount;
             } else if (/離島|島特/.test(baseName)) {
               // 離島関連は数量が記載されない → 1扱い
               var calcQtyIsl = isFinite(qtyPart) ? Number(qtyPart) : 1;
